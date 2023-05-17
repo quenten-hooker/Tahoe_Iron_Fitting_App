@@ -1,0 +1,806 @@
+---
+title: "Tahoe Iron Fitting App - Data format and test"
+author: "Quenten Hooker"
+date: "4/17/2023"
+output: 
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+  html_notebook: default
+urlcolor: blue
+---
+
+- Goal
+- someone enter in a few swing parameters and give downrange and trajectory data for a few clubs
+
+```{r , echo=FALSE, include = FALSE, warning=FALSE}
+
+# library("ggplot2")
+# library("lme4")
+# library("car")
+# library("dplyr")
+# library("tidyr")
+# library("lmerTest")
+# library("ggpubr")
+# library("GGally")
+# library("emmeans")
+# library("olsrr")
+# library("readxl")
+# library("ggforce")
+# library("psych")
+# library("jtools")
+# library("sjPlot")
+# library("sjmisc")
+# library("kableExtra")
+# library("knitr")
+# library("sp")
+# library("plotly")
+# library("reshape2")
+# library("ggeffects")
+# library("MuMIn")
+# library('lubridate')
+# library('xlsx')
+# library('stringi')
+# library('fuzzyjoin')
+# library('stringdist')
+# library('reticulate')
+# library('stringr')
+
+#pacman::p_load(ggplot2, dplyr, tidyr, ggpubr, sjPlot, kableExtra, sp, plotly, ggeffects, akima, lme4, stringr, reshape)
+library("dplyr")
+library("reshape")
+library("ggplot2")
+library("lme4")
+library("sjPlot")
+library("ggeffects")
+
+```
+
+#Glob and format to merge Core panel data
+```{r , echo=TRUE, include = TRUE}
+
+# Path <- "E:/4716/Shared Documents/91362/05 - Player Test/"
+# 
+# dat.files  <- list.files(path= Path,
+#                                recursive=T,
+#                                pattern=c(".csv"),
+#                                full.names=T)
+# 
+# #function for reading each cg/moi
+# readDatFile <- function(f) {
+#   #dat.fl <- read_excel(path = f, sheet= 1, col_names = TRUE, skip = 0)
+#   dat.fl <- read.csv(f, header = TRUE, sep=",", skip = 4,  
+#                na.strings=c("NA","NaN"," ",""))
+# }
+# 
+# Data.Quad <- c()
+#   
+# #Look for sheet names to help scraper 
+# for (i in 1:length(dat.files)) {
+#  
+#   temp <- readDatFile(dat.files[i])
+#   temp$Player <- sub(".*/", "", dat.files[i])
+#   temp$Player <-  substr(temp$Player, 1, nchar(temp$Player)-4)
+#   Data.Quad <- rbind(Data.Quad, temp)
+#   
+# }
+# 
+# Data.Quad 
+# 
+# Data.Quad$Club[Data.Quad$Club.ID == "Club A"] <- "AW"
+# Data.Quad$Club[Data.Quad$Club.ID == "Club B"] <- "9 Iron"
+# Data.Quad$Club[Data.Quad$Club.ID == "Club C"] <- "AW"
+# Data.Quad$Club[Data.Quad$Club.ID == "Club D"] <- "9 Iron"
+# 
+# Data.Quad$Model[Data.Quad$Club.ID == "Club D" | Data.Quad$Club.ID == "Club C" ] <- "Tahoe HL"
+# Data.Quad$Model[Data.Quad$Club.ID == "Club A" | Data.Quad$Club.ID == "Club B" ] <- "Tahoe Std"
+# 
+# #Data.Quad.03 <- Data.Quad
+# #Data.Quad.04 <- Data.Quad
+# #Data.Quad.05 <- Data.Quad
+# 
+# Data.Combined <- rbind(Data.Quad.03, Data.Quad.04, Data.Quad.05)
+# Data.Combined$Tags <- Data.Combined$Model
+# Data.Combined$FullTag <- paste(Data.Combined$Club, Data.Combined$Model, sep = ", " )
+# 
+# Data.Combined <- Data.Combined %>% relocate(Player, Club, Tags, FullTag) %>% relocate(Time, .after = Vertical.Face.Impact..mm.....is.up.) %>% relocate(Shot.Color..R.G.B., .after = Time)
+# 
+# col_names <- c("Player", "Club", "Tags", "FullTag", "Shot.ID", "Selected", "Date.quad", "Club.Type", "Club.ID", "Range.Ball.quad", "Ball.Speed.quad","Launch.Angle.quad", "Side.Angle.quad", "Side.Spin.quad", "Back.Spin.quad", "Tilt.Angle.quad", "Spin.Rate.quad", "Peak.Height.quad", "Carry.quad", "Range.quad", "Offline.quad", "Descent.Angle.quad", "Club.Speed.quad" ,"Efficiency.quad", "Angle.Of.Attack.quad", "Club.Path.quad", "Face.To.Target.quad", "Face.To.Path.quad", "Lie.quad", "Loft.quad", "Closing.Rate.quad", "Impact.Speed.quad", "Lateral.Face.quad", "Vertical.Face.quad", "Time", "Shot.Color", "Model")
+# colnames(Data.Combined) <- col_names
+# 
+# #write.csv(Data.Combined, "Core_Panel_Glob.csv")
+
+```
+
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+player_speed <- 98.3
+player_attack <- -4.8
+player_pitch <- -7.0	
+
+```
+
+# Read data and reformat
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data <- read.csv('Gold_Panel_Glob.csv')
+
+col_names <- c("Player", "Club", "Tags", "FullTag", "Shot.ID", "Selected", "Date.quad", "Club.Type", "Club.ID", "Range.Ball.quad", "Ball.Speed.quad","Launch.Angle.quad", "Side.Angle.quad", "Side.Spin.quad", "Back.Spin.quad", "Tilt.Angle.quad", "Spin.Rate.quad", "Peak.Height.quad", "Carry.quad", "Range.quad", "Offline.quad", "Descent.Angle.quad", "Club.Speed.quad" ,"Efficiency.quad", "Angle.Of.Attack.quad", "Club.Path.quad", "Face.To.Target.quad", "Face.To.Path.quad", "Lie.quad", "Loft.quad", "Closing.Rate.quad", "Impact.Speed.quad", "Lateral.Face.quad", "Vertical.Face.quad", "Time", "Shot.Color")
+
+colnames(Data) <- col_names
+
+Data$Model <- Data$Tags
+
+Data.core <- read.csv('Core_Panel_Glob.csv')
+Data <- rbind(Data, Data.core)
+
+Data %>% group_by(Tags) %>% summarise(n())
+Data %>% group_by(Player) %>% summarise(n())
+
+Data %>% filter(Model == "Tahoe HL") %>% group_by(Club) %>% summarise(n())
+
+```
+
+#Creating length and static loft columns
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data$Length[Data$Club== "PW"] <- 35.75
+Data$Length[Data$Club== "9 Iron"] <- 36.0
+Data$Length[Data$Club== "8 Iron"] <- 36.5
+Data$Length[Data$Club== "7 Iron"] <- 37.0
+Data$Length[Data$Club== "6 Iron"] <- 37.5
+Data$Length[Data$Club== "5 Iron"] <- 38.0
+
+Data$Length[Data$Club== "AW" & Data$Model == "Tahoe Std"] <- 35.5
+Data$Length[Data$Club== "9 Iron" & Data$Model == "Tahoe Std"] <- 36.0
+Data$Length[Data$Club== "7 Iron" & Data$Model == "Tahoe Std"] <- 37.25
+Data$Length[Data$Club== "5 Iron" & Data$Model == "Tahoe Std"] <- 38.5
+
+Data$Length[Data$Club== "AW" & Data$Model == "Tahoe HL"] <- 35.5
+Data$Length[Data$Club== "9 Iron" & Data$Model == "Tahoe HL"] <- 36.0
+Data$Length[Data$Club== "7 Iron" & Data$Model == "Tahoe HL"] <- 37.5
+Data$Length[Data$Club== "5 Iron" & Data$Model == "Tahoe HL"] <- 39.0
+
+Data$Length[Data$Club== "PW"] <- 35.75
+Data$Length[Data$Club== "9 Iron"] <- 36.0
+Data$Length[Data$Club== "8 Iron"] <- 36.5
+Data$Length[Data$Club== "7 Iron"] <- 37.0
+Data$Length[Data$Club== "6 Iron"] <- 37.5
+Data$Length[Data$Club== "5 Iron"] <- 38.0
+
+Data$Static.Loft[Data$Club == "PW" & Data$Model == "TCB"] <- 46.75
+Data$Static.Loft[Data$Club == "9 Iron" & Data$Model == "TCB"] <- 42.5
+Data$Static.Loft[Data$Club == "8 Iron" & Data$Model == "TCB"] <- 39
+Data$Static.Loft[Data$Club == "7 Iron" & Data$Model == "TCB"] <- 34.75
+Data$Static.Loft[Data$Club == "6 Iron" & Data$Model == "TCB"] <- 30.25
+Data$Static.Loft[Data$Club == "5 Iron" & Data$Model == "TCB"] <- 26.5
+
+Data$Static.Loft[Data$Club == "PW" & Data$Model == "MB21"] <- 46
+Data$Static.Loft[Data$Club == "9 Iron" & Data$Model == "MB21"] <- 42.5
+Data$Static.Loft[Data$Club == "8 Iron" & Data$Model == "MB21"] <- 38.25
+Data$Static.Loft[Data$Club == "7 Iron" & Data$Model == "MB21"] <- 34.25
+Data$Static.Loft[Data$Club == "6 Iron" & Data$Model == "MB21"] <- 30.5
+Data$Static.Loft[Data$Club == "5 Iron" & Data$Model == "MB21"] <- 26.25
+
+Data$Static.Loft[Data$Club == "AW" & Data$Model == "Tahoe Std"] <- 47.0
+Data$Static.Loft[Data$Club == "9 Iron" & Data$Model == "Tahoe Std"] <- 37.0
+Data$Static.Loft[Data$Club == "7 Iron" & Data$Model == "Tahoe Std"] <- 29.0
+Data$Static.Loft[Data$Club == "5 Iron" & Data$Model == "Tahoe Std"] <- 23.0
+
+Data$Static.Loft[Data$Club == "AW" & Data$Model == "Tahoe HL"] <- 48.0
+Data$Static.Loft[Data$Club == "9 Iron" & Data$Model == "Tahoe HL"] <- 38.0
+Data$Static.Loft[Data$Club == "7 Iron" & Data$Model == "Tahoe HL"] <- 30.0
+Data$Static.Loft[Data$Club == "5 Iron" & Data$Model == "Tahoe HL"] <- 24.0
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data <- within(Data, {
+  Player <- factor(Player)
+  Club <- factor(Club)
+  Club.Speed.quad <- as.numeric(Club.Speed.quad)
+  Efficiency.quad <- as.numeric(Efficiency.quad)
+  Angle.Of.Attack.quad <- as.numeric(Angle.Of.Attack.quad)
+  Club.Path.quad <- as.numeric(Club.Path.quad)
+  Face.To.Target.quad <- as.numeric(Face.To.Target.quad)
+  Face.To.Path.quad <- as.numeric(Face.To.Path.quad)
+  Lie.quad <- as.numeric(Lie.quad)
+  Loft.quad <- as.numeric(Loft.quad)
+  Lateral.Face.quad <- as.numeric(Lateral.Face.quad)*-1
+  Vertical.Face.quad <- as.numeric(Vertical.Face.quad)
+  })
+
+Data$Pitch <- Data$Loft.quad - Data$Static.Loft
+Data.Combined <- Data
+
+```
+
+
+# Filtering functions
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+# create detect outlier function
+# detect_outlier <- function(x) {
+# 
+# 	# calculate first quantile
+# 	Quantile1 <- quantile(x %>% na.omit(), probs=.25)
+# 
+# 	# calculate third quantile
+# 	Quantile3 <- quantile(x %>% na.omit(), probs=.75)
+# 
+# 	# calculate inter quartile range
+# 	IQR = Quantile3-Quantile1
+# 
+# 	# return true or false
+# 	x > Quantile3 + (IQR*1.5) | x < Quantile1 - (IQR*1.5)
+# }
+# 
+# # create remove outlier function
+# remove_outlier <- function(dataframe,
+# 							columns=names(dataframe)) {
+# 
+# 	# for loop to traverse in columns vector
+# 	for (col in columns) {
+# 
+# 		# remove observation if it satisfies outlier function
+# 		temp <- !detect_outlier(dataframe[[col]])
+# 		temp[temp = NA] <- TRUE
+# 	  dataframe <- dataframe[, ]
+# 	}
+# 
+# 	# return dataframe
+# 	print("Remove outliers")
+# 	print(dataframe)
+# }
+
+```
+
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+data_long_ball <- melt(Data.Combined %>% select(Ball.Speed.quad, Launch.Angle.quad, Side.Angle.quad, Side.Spin.quad, Back.Spin.quad))
+
+data_long_club <- melt(Data.Combined %>% select(Club.Speed.quad, Angle.Of.Attack.quad, Club.Path.quad, Face.To.Target.quad, Face.To.Path.quad, Lie.quad, Pitch, Lateral.Face.quad, Vertical.Face.quad))
+
+ggplot(data_long_ball, aes(x=value,)) + geom_boxplot() + facet_wrap(~variable, scale="free")
+ggplot(data_long_club, aes(x=value,)) + geom_boxplot() + facet_wrap(~variable, scale="free")
+
+Data.Combined <- Data.Combined %>% filter(Ball.Speed.quad > 50, Launch.Angle.quad < 50, Side.Angle.quad < 25, Side.Spin.quad < 2000, Back.Spin.quad > 3000, Face.To.Target.quad < 15, Face.To.Target.quad > -15, Lie.quad < 20, Lie.quad > -20, Pitch > -25, Pitch < 0, Lateral.Face.quad > -20, Lateral.Face.quad < 20, Vertical.Face.quad < 10, Vertical.Face.quad > -30)
+
+```
+
+# Modeling dynamics
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+ggplot(Data.Combined, aes(x = Length, y = Club.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+ggplot(Data.Combined, aes(x = Length, y = Angle.Of.Attack.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+ggplot(Data.Combined, aes(x = Length, y = Club.Path.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+ggplot(Data.Combined, aes(x = Length, y = Pitch)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+
+lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
+           # Fixed-effects
+           1 + Length + I(Length^2) +
+           # Random-effects
+           (1 + Length + I(Length^2) | Player), data = Data.Combined)
+
+lm.Angle.Of.Attack.quad <-lmer(Angle.Of.Attack.quad ~
+           # Fixed-effects
+           1 + Length + I(Length^2) +
+           # Random-effects
+           (1 + Length + I(Length^2) | Player), data = Data.Combined)
+
+lm.Pitch <-lmer(Pitch ~
+           # Fixed-effects
+           1 + Length + I(Length^2) +
+           # Random-effects
+           (1 + Length + I(Length^2) | Player), data = Data.Combined)
+
+plot_model(lm.Club.Speed.quad, type = "pred", terms = c("Length[all]"), ci.lvl = NA, show.data = TRUE)+theme_sjplot()
+plot_model(lm.Angle.Of.Attack.quad, type = "pred", terms = c("Length[all]"), ci.lvl = NA, show.data = TRUE)+theme_sjplot()
+plot_model(lm.Pitch, type = "pred", terms = c("Length[all]"), ci.lvl = NA, show.data = TRUE)+theme_sjplot()
+
+plot_model(lm.Club.Speed.quad, type = "pred", pred.type = ("re"), terms = c("Length[all]", "Player"), show.data = FALSE, ci.lvl =NA)+theme_sjplot()
+plot_model(lm.Angle.Of.Attack.quad, type = "pred", pred.type = ("re"), terms = c("Length[all]", "Player"), show.data = FALSE, ci.lvl =NA)+theme_sjplot()
+plot_model(lm.Pitch, type = "pred", pred.type = ("re"), terms = c("Length[all]", "Player"), show.data = FALSE, ci.lvl =NA)+theme_sjplot()
+
+```
+
+```{r , echo=FALSE, include = FALSE, warning=FALSE, message = FALSE}
+
+Data.Combined.train <- Data.Combined %>% filter(Model == "Tahoe Std" | Model == "Tahoe HL")
+
+# Data.Combined.train$Model[Data.Combined.train$Model== "MB21"] <- "Tahoe (test)"
+# Data.Combined.train$Model[Data.Combined.train$Model== "TCB"] <- "Tahoe HL (test)"
+
+Data.Combined.train <- within(Data.Combined.train, {
+  Model <- factor(as.character(Model))
+  })
+
+Data.Combined.train <-  Data.Combined.train %>% arrange(Player, Club, Model)
+Data.Combined %>% group_by(Model) %>% summarise(n())
+
+lm.Ball.Speed.normalize <-lmer(Ball.Speed.quad ~
+           # Fixed-effects
+           1 + Model + Club.Speed.quad + Pitch + Length:Club.Speed.quad + Length:Pitch + Vertical.Face.quad + Lateral.Face.quad +
+             Model:Vertical.Face.quad + Model:Lateral.Face.quad + Model:I(Vertical.Face.quad^2) + Model:I(Lateral.Face.quad^2) +
+           # Random-effects
+           (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
+
+lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
+           # Fixed-effects
+           1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + Vertical.Face.quad + 
+             Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
+           # Random-effects
+           (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
+           # Fixed-effects
+           1 + Model + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad +
+             Length:Pitch + Length:Vertical.Face.quad + Static.Loft:Club.Speed.quad + Static.Loft:Vertical.Face.quad +
+           # Random-effects
+           (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+lm.Side.Angle.normalize <-lmer(Side.Angle.quad ~
+           # Fixed-effects
+           1 + Length*Club.Speed.quad + Length*Face.To.Target.quad + Length*Lateral.Face.quad +
+           # Random-effects
+           (1 + Club.Speed.quad + Face.To.Target.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
+
+lm.Side.Spin.normalize <-lmer(Side.Spin.quad ~
+           # Fixed-effects
+           1 + Length*Club.Speed.quad + Length*Face.To.Path.quad + Length*Lateral.Face.quad  +
+           # Random-effects
+           (1 + Club.Speed.quad + Face.To.Path.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
+
+```
+
+## Ball Speed Evaluation
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+summary(lm.Ball.Speed.normalize)
+
+plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Club.Speed.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+# plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Angle.Of.Attack.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Pitch", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Vertical.Face.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Lateral.Face.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+
+```
+
+
+## Launch Angle Evaluation
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+# lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
+#            # Fixed-effects
+#            1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + 
+#              Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
+#            # Random-effects
+#            (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+#summary(lm.Launch.Angle.normalize)
+
+#ggpredict(lm.Launch.Angle.normalize)
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Club.Speed.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Club.Speed.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Angle.Of.Attack.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Angle.Of.Attack.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Pitch", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Pitch", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Vertical.Face.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Vertical.Face.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+```
+
+## Backspin Evaluation
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+# lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
+#            # Fixed-effects
+#            1 + Model + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad +
+#              Length:Pitch + Length:Vertical.Face.quad + Static.Loft:Club.Speed.quad + Static.Loft:Vertical.Face.quad +
+#            # Random-effects
+#            (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+ggpredict(lm.Back.Spin.normalize)
+
+#plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Club.Speed.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Angle.Of.Attack.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Pitch", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Vertical.Face.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Club.Speed.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Angle.Of.Attack.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Pitch", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Vertical.Face.quad", "Static.Loft", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+```
+
+## Side Angle Evaluation
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+ggpredict(lm.Side.Angle.normalize)
+
+plot_model(lm.Side.Angle.normalize, type = "pred", terms = c("Club.Speed.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Side.Angle.normalize, type = "pred", terms = c("Face.To.Target.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Side.Angle.normalize, type = "pred", terms = c("Lateral.Face.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+```
+
+
+## Sidespin Evaluation
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+ggpredict(lm.Side.Spin.normalize)
+
+plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Club.Speed.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Face.To.Path.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Lateral.Face.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+
+```
+
+## Prep for building test data frame
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+Tahoe_length <- c(35.75, 36.0, 36.625, 37.25, 37.875, 38.5)
+Tahoe_static_loft <- c(42, 37, 33, 29, 26, 23)
+Tahoe_HL_length <- c(35.75, 36.0, 36.75, 37.5, 38.25, 39.0)
+Tahoe_HL_static_loft <- c(43, 38, 34, 30, 27, 24)
+
+Length.data <- data.frame(Length = c(rep(Tahoe_length, each = 8), rep(Tahoe_HL_length, each = 8)))
+Static_Loft.data <- data.frame(Loft = c(rep(Tahoe_static_loft, each = 8), rep(Tahoe_HL_static_loft, each = 8)))
+
+player_speed_dif <- (player_speed - ggpredict(lm.Club.Speed.quad, terms = "Length[37.5]")$predicted)
+player_attack_dif <- (player_attack - ggpredict(lm.Angle.Of.Attack.quad, terms = "Length[37.5]")$predicted)
+player_pitch_dif <- (player_pitch- ggpredict(lm.Pitch, terms = "Length[37.5]")$predicted)
+
+#seed and norm vector
+set.seed(6)#14
+x <- rnorm(8, 0, 1)
+Lateral.Impact.GMM <- scales::rescale(x, to = c(-15, 15), from = range(x))
+
+mean(Lateral.Impact.GMM)
+
+set.seed(14)
+y <- rnorm(8, 0, 1)
+Vertical.Impact.GMM <- scales::rescale(y, to = c(-20, 0), from = range(y))
+
+#test <- data.frame(Lateral.Impact.GMM, Vertical.Impact.GMM)
+#ggplot(test, aes(Lateral.Impact.GMM, Vertical.Impact.GMM)) + geom_point()
+
+```
+
+## Test data frame
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+
+new_data = c()
+new_data <- data.frame(Player = rep("Population", nrow(Length.data)),
+                       Model = rep(c("Tahoe Std", "Tahoe HL"), each = 48),
+                       Length =c(rep(Tahoe_length, each = 8), rep(Tahoe_HL_length, each = 8)),
+                       Static.Loft = c(rep(Tahoe_static_loft, each = 8), rep(Tahoe_HL_static_loft, each = 8)),
+                       Club.Speed.quad = predict(lm.Club.Speed.quad, re.form= NA, newdata = Length.data) + player_speed_dif,
+                       Angle.Of.Attack.quad = predict(lm.Angle.Of.Attack.quad, re.form= NA, newdata = Length.data) + player_attack_dif,
+                       Face.To.Target.quad = 0,
+                       Club.Path.quad = 0,
+                       Face.To.Path.quad = 0,
+                       Pitch = predict(lm.Pitch, re.form= NA, newdata = Length.data) + player_pitch_dif,
+                       Lie.quad = rep(mean(na.omit(Data.Combined.train$Lie.quad)), 96),
+                       Lateral.Face.quad = rep(Lateral.Impact.GMM, 12),
+                       Vertical.Face.quad = rep(Vertical.Impact.GMM, 12))
+
+new_data %>% group_by(Model, Length) %>% summarise(Club.Speed.quad = mean(Club.Speed.quad), Angle.Of.Attack.quad = mean(Angle.Of.Attack.quad), Pitch = mean(Pitch))
+
+```
+
+## predict data frame
+```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
+predict_data = c()
+predict_data$Model = new_data$Model
+predict_data$Length = new_data$Length
+predict_data$Ball.Speed <- predict(lm.Ball.Speed.normalize, re.form= NA, newdata = new_data)
+predict_data$Back.Spin <- predict(lm.Back.Spin.normalize, re.form= NA, newdata = new_data)
+predict_data$Launch.Angle <- predict(lm.Launch.Angle.normalize, re.form= NA, newdata = new_data)
+predict_data$Side.Spin <- predict(lm.Side.Spin.normalize, re.form= NA, newdata = new_data)
+predict_data$Side.Angle <- predict(lm.Side.Angle.normalize, re.form= NA, newdata = new_data)
+predict_data <- data.frame(predict_data)
+
+
+#Data.Combined.train %>% filter(Player == "Quenten Hooker") %>% group_by(Player, Length) %>% summarise(mean(Club.Speed.quad), mean(Pitch), mean(Angle.Of.Attack.quad))
+
+```
+
+## Aero code
+```{r , echo=FALSE, include = FALSE, warning=FALSE}
+
+model_col_names <- c("Model", "Club", "speed-mph", "back_spin-rpm", "launch_angle-deg", "side_spin-rpm",
+                     "side_angle-deg")
+
+colnames(predict_data) <- as.character(model_col_names)
+aero_data <- predict_data %>% select("speed-mph", "back_spin-rpm", "launch_angle-deg", "side_spin-rpm",
+                     "side_angle-deg")
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+library(reticulate)
+use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+
+```
+
+
+```{python, echo=FALSE, include = TRUE, warning=FALSE}
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import scipy as scipy
+import downrange.downrange as downrange
+
+#demo = downrange.Downrange()
+
+environment = {
+        'env_temp_F':  75, #[deg F]
+        'env_rh-percent' : 50, #[% relative humidity]
+        'env_pre-psi': 14.7, #[psi]
+        'gravity' : 9.8066352, #[m/s^2], value from Petrisor's code
+        'wind' : [0,0,0] #X,Y,Z - positive = downwind, __, __
+        }
+        
+ball_properties={
+        'ball_size-inch': 1.6822,
+        'ball_mass-g':45.538,
+        'ball_moi-ozins2': 0.0011609
+        }
+        
+#aerosurfacepath='C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/Lib/site-packages/downrange/ITRdata/8323/'
+
+demo = downrange.Downrange(
+                            environment=environment,
+                            ball_properties=ball_properties,
+                            #aerosurfacepath=aerosurfacepath
+                            )
+``` 
+
+
+```{python, echo=FALSE, include = FALSE, warning=FALSE, message = FALSE}
+
+# 131.0761	5626.937	13.10392	-86.35503	-0.52511924
+# 
+# launch= {
+#         'speed-mph':131.0761,
+#         'back_spin-rpm' : 5626.937,
+#         'launch_angle-deg' : 13.10392,
+#         'side_spin-rpm' : -86.35503,
+#         'side_angle-deg' : -0.52511924} 
+#         
+#     results = demo.predictdownrange(launch)
+#     
+#     
+#     results[1]
+
+#From model predictions
+py_aero_predict = r.aero_data
+
+test = []
+for k, row in py_aero_predict.iterrows():
+  results = demo.predictdownrange(row)
+  test.append(results)
+
+trajectory, results = zip(*test)
+
+df = pd.DataFrame(results)
+df2 = pd.DataFrame(trajectory)
+#df2 = pd.DataFrame(trajectory[1])
+#df3 = pd.DataFrame(trajectory[31])
+#df4 = pd.DataFrame(trajectory[61])
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+df_1 <- data.frame(reticulate::py$df)
+#df_2 <- data.frame(reticulate::py$df2)
+
+predict_data$Carry.aero <- df_1$carry_yd
+predict_data$Offline.aero <- df_1$carryDisp_yd
+
+#predict_data <- predict_data %>% group_by(Club) %>% mutate(obs = n()) %>% filter(obs > 5)
+model_col_names <- c("Model", "Length", "Ball.Speed", "Back.Spin", "Launch.Angle", "Side.Spin", "Side.Angle", "Carry.aero", "Offline.aero")
+colnames(predict_data) <- model_col_names
+predict_data$Model <- rep(c("Tahoe", "Tahoe HL"), each = 48)
+predict_data
+
+```
+
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 35.75] <- "PW"
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 36.00] <- "9"
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 36.625] <- "8"
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 37.25] <- "7"
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 37.875] <- "6"
+predict_data$Club[predict_data$Model == "Tahoe" & predict_data$Length== 38.50] <- "5"
+#predict_data$Club[predict_data$Club == "Tahoe" & predict_data$Length== 39.125] <- "4"
+
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 35.75] <- "PW"
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.00] <- "9"
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.75] <- "8"
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 37.50] <- "7"
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 38.25] <- "6"
+predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 39.00] <- "5"
+#predict_data$Club[predict_data$Club == "Tahoe HL" & predict_data$Length== 39.750] <- "4"
+
+predict_data <- within(predict_data, {
+  Club <- factor(Club)
+  Length <- factor(Length)
+  Model <- factor(Model)
+  })
+
+```
+
+
+
+Downrange Plots
+---------------------------------------------------------------------------------------------------
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+predict_data_plot <- predict_data
+
+predict_data_plot %>% group_by(Length, Model) %>% summarise(Carry.aero.avg = mean(Carry.aero), Carry.aero.sd = sd(Carry.aero))
+
+predict_data_plot %>% group_by(Model, Length) %>% summarise(Ball.Speed = mean(Ball.Speed), Back.Spin = mean(Back.Spin), Launch.Angle = mean(Launch.Angle), Side.Spin = mean(Side.Spin), Side.Angle = mean(Side.Angle))
+
+annotate_npc <- function(label, x, y, ...)
+{
+  ggplot2::annotation_custom(grid::textGrob(
+    x = unit(x, "npc"), y = unit(y, "npc"), label = label, ...))
+}
+
+ggplot(predict_data_plot,  aes(x = Offline.aero, y = Carry.aero, color = Model, shape = Club)) + geom_point() + stat_ellipse(aes(color = Model, shape = Club), level = 0.85, type = "t")+ theme_classic(base_size = 18)+theme(legend.position = "right") + coord_cartesian(xlim = c(plyr::round_any(min(predict_data$Offline.aero)-0, 5, f = floor), plyr::round_any(max(predict_data$Offline.aero)+0, 5, f = ceiling)), ylim = c(plyr::round_any(min(predict_data$Carry.aero)-5, 10, f = floor), plyr::round_any(max(predict_data$Carry.aero)+10, 10, f = ceiling))) + ylab("Carry.predict (yds)") + xlab("Offline.predict (yds)")
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+trajectory <- predict_data %>% group_by(Model, Club) %>% summarise(Ball.Speed = mean(Ball.Speed), Back.Spin = mean(Back.Spin), Launch.Angle = mean(Launch.Angle), Side.Spin = mean(Side.Spin), Side.Angle = mean(Side.Angle), Carry.aero = mean(Carry.aero))
+
+trajectory
+
+#summary(Launch.Angle.Normalize)
+```
+
+```{r , echo=FALSE, include = FALSE, warning=FALSE}
+
+model_col_names <- c("Model", "Club", "speed-mph", "back_spin-rpm", "launch_angle-deg", "side_spin-rpm",
+                     "side_angle-deg")
+
+colnames(trajectory) <- as.character(model_col_names)
+aero_data <- trajectory %>% select("speed-mph", "back_spin-rpm", "launch_angle-deg", "side_spin-rpm",
+                     "side_angle-deg")
+
+```
+
+
+```{python, echo=FALSE, include = FALSE, warning=FALSE, message = FALSE}
+
+# 131.0761	5626.937	13.10392	-86.35503	-0.52511924
+# 
+# launch= {
+#         'speed-mph':131.0761,
+#         'back_spin-rpm' : 5626.937,
+#         'launch_angle-deg' : 13.10392,
+#         'side_spin-rpm' : -86.35503,
+#         'side_angle-deg' : -0.52511924} 
+#         
+#     results = demo.predictdownrange(launch)
+#     
+#     
+#     results[1]
+
+#From model predictions
+py_aero_predict = r.aero_data
+
+test = []
+for k, row in py_aero_predict.iterrows():
+  results = demo.predictdownrange(row)
+  test.append(results)
+
+trajectory, results = zip(*test)
+
+df = pd.DataFrame(results)
+df2 = pd.DataFrame(trajectory)
+
+trajectory_0 = trajectory[0]
+trajectory_1 = trajectory[1]
+trajectory_2 = trajectory[2]
+trajectory_3 = trajectory[3]
+trajectory_4 = trajectory[4]
+trajectory_5 = trajectory[5]
+trajectory_6 = trajectory[6]
+trajectory_7 = trajectory[7]
+trajectory_8 = trajectory[8]
+trajectory_9 = trajectory[9]
+trajectory_10 = trajectory[10]
+trajectory_11 = trajectory[11]
+```
+
+
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+#Create dataframe of trajectory by ball
+df_0 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[1], data.frame(reticulate::py$trajectory_0))
+colnames(df_0) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_1 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[2], data.frame(reticulate::py$trajectory_1))
+colnames(df_1) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_2 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[3], data.frame(reticulate::py$trajectory_2))
+colnames(df_2) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_3 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[4], data.frame(reticulate::py$trajectory_3))
+colnames(df_3) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_4 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[5], data.frame(reticulate::py$trajectory_4))
+colnames(df_4) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time")
+df_5 <- cbind(levels(trajectory$Model)[1], levels(trajectory$Club)[6], data.frame(reticulate::py$trajectory_5))
+colnames(df_5) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_0b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[1], data.frame(reticulate::py$trajectory_6))
+colnames(df_0b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_1b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[2], data.frame(reticulate::py$trajectory_7))
+colnames(df_1b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_2b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[3], data.frame(reticulate::py$trajectory_8))
+colnames(df_2b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_3b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[4], data.frame(reticulate::py$trajectory_9))
+colnames(df_3b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+df_4b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[5], data.frame(reticulate::py$trajectory_10))
+colnames(df_4b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time")
+df_5b <- cbind(levels(trajectory$Model)[2], levels(trajectory$Club)[6], data.frame(reticulate::py$trajectory_11))
+colnames(df_5b) <- c("Model", "Club", "X.yards", "Y.yards", "Z.yards", "Time") 
+
+predict_trajectory <- rbind(df_0, df_1, df_2, df_3, df_4, df_5, df_0b, df_1b, df_2b, df_3b, df_4b, df_5b)
+
+#Correct variable type
+predict_trajectory <- within(predict_trajectory, {
+  Club <- factor(Club)
+  MOdel <- factor(Club)
+  })
+
+ggplot(predict_trajectory, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
+  geom_point() + xlab("Distance (yards)") + ylab("Height (ft)") + theme_classic()
+
+```
+
+
