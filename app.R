@@ -26,8 +26,8 @@ use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/pytho
 # library('png')
 # library('grid')
 # library('rsconnect')
-# library('shiny')
-# library('shinyWidgets')
+library('shiny')
+library('shinyWidgets')
 
 # # Additional Packages
 # library("lme4")
@@ -193,11 +193,32 @@ model_lc <- function(newdata) {
   predict_data = c()
   predict_data$Model = new_data$Model
   predict_data$Length = new_data$Length
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 35.75] <- "PW"
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 36.00] <- "9"
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 36.625] <- "8"
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 37.25] <- "7"
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 37.875] <- "6"
+  predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 38.50] <- "5"
+  #predict_data$Club[predict_data$Club == "Tahoe" & predict_data$Length== 39.125] <- "4"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 35.75] <- "PW"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.00] <- "9"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.75] <- "8"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 37.50] <- "7"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 38.25] <- "6"
+  predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 39.00] <- "5"
+  #predict_data$Club[predict_data$Club == "Tahoe HL" & predict_data$Length== 39.750] <- "4"
   predict_data$Ball.Speed <- predict(lm.Ball.Speed.normalize, re.form= NA, newdata = new_data)
   predict_data$Launch.Angle <- predict(lm.Launch.Angle.normalize, re.form= NA, newdata = new_data)
   predict_data$Back.Spin <- predict(lm.Back.Spin.normalize, re.form= NA, newdata = new_data)
   predict_data$Side.Angle <- predict(lm.Side.Angle.normalize, re.form= NA, newdata = new_data)
   predict_data$Side.Spin <- predict(lm.Side.Spin.normalize, re.form= NA, newdata = new_data)
+  
+  predict_data <- within(predict_data, {
+    Club <- factor(Club)
+    Length <- factor(Length)
+    Model <- factor(Model)
+    })
+  
   return(predict_data)
   
 }
@@ -221,17 +242,28 @@ ui <- fluidPage(
     )
   )),
   
+  setSliderColor(c("darkred"), c(1)),
+  sliderInput(
+    "Speed",
+    label = strong(HTML('&nbsp;'), "7 Iron Clubhead Speed"),
+    min = 50,
+    max = 110,
+    value = c(80),
+    width = '390px'
+  ),
+  
+  
+  # fluidRow(
+  #   dataTableOutput("launch.conditions")
+  # ),
+  
+  # fluidRow(
+  #   dataTableOutput("aero")
+  # ),
   
   fluidRow(
-    dataTableOutput("launch.conditions")
-  ),
+    plotOutput("plotdownrange")),
   
-  fluidRow(textOutput("test")
-  ),
-  
-  fluidRow(
-    dataTableOutput("aero")
-  ),
 )
 
 source_python('python_ref.py')
@@ -239,6 +271,30 @@ source_python('python_ref.py')
 # Define server logic ----
 server <- function(input, output) {
   
+  input_df <- reactive({
+    data.frame(
+      speed = (as.numeric(input$Speed))
+    )
+  })
+  
+  
+  downrange_data <- reactive({
+    
+    launch_data <- as.data.frame(model_lc())
+    model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    colnames(launch_data) <- as.character(model_col_names)
+    
+    aero_data <- launch_data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    aero_predict <- aerotest(aero_data)
+    downrange_data <- aero_predict %>% select(carrydisp, carrydist)
+    
+    final_data <- cbind(launch_data, downrange_data)
+    
+    print(final_data)
+    
+    return(final_data)
+
+  })
   
   output$launch.conditions <- renderDataTable({
 
@@ -248,21 +304,16 @@ server <- function(input, output) {
 
     })
 
-  output$test <- renderText({
-
-    returnedText = testMethod()
-
-    })
-  
   output$aero <- renderDataTable({
 
     data <- as.data.frame(model_lc())
-    model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
     colnames(data) <- as.character(model_col_names)
 
     aero_data <- data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
     #aero_data <- as.data.frame(aero_data)
     test <- aerotest(aero_data)
+    
     
     #print(test)
     #test <- as.data.frame(reticulate::py$test)
@@ -272,6 +323,16 @@ server <- function(input, output) {
     #returnedText = testMethod()
 
   })
+  
+  output$plotdownrange <- renderPlot({
+    
+    ggplot(NULL,  aes(x = carrydisp, y = carrydist, color = Model, shape = Club)) + geom_point(data = downrange_data()) +
+    stat_ellipse(data = downrange_data(), level = 0.85, type = "t")+ theme_classic(base_size = 18)+theme(legend.position = "right") + 
+    ylab("Carry.predict (yds)") + xlab("Offline.predict (yds)")
+    
+      })
+  
+  
   
   
 }

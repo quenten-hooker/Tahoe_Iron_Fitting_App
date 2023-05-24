@@ -85,9 +85,4 @@ def aerotest(aero_data):
     # data2 = pd.DataFrame(trajectory)
 
     return data
-  
-  
-def testMethod(): #get number of bins passed by R Shiny server
-  string = "I came from a Python Function" 
 
-  return string
