@@ -8,8 +8,13 @@
 # 1) go button?
 
 # # Load Packages
-# library("ggplot2")
-# library("dplyr")
+library("ggplot2")
+library("dplyr")
+library("reticulate")
+library('lme4')
+library('DT')
+library('ggeffects')
+use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 # library("tidyr")
 # library("ggpubr")
 # library("ggforce")
@@ -23,8 +28,6 @@
 # library('rsconnect')
 # library('shiny')
 # library('shinyWidgets')
-# library('lme4')
-# library('DT')
 
 # # Additional Packages
 # library("lme4")
@@ -43,13 +46,12 @@
 # library("sp")
 # library("plotly")
 # library("reshape2")
-# library('ggeffects')
 # library('akima')
 # library('lubridate')
 # library('stringi')
 # library('fuzzyjoin')
 # library('stringdist')
-# library('reticulate')
+library('reticulate')
 # library('png')
 
 # Player images
@@ -179,9 +181,28 @@ new_data <- data.frame(Player = rep("Population", nrow(Length.data)),
                        Lateral.Face.quad = rep(Lateral.Impact.GMM, 12),
                        Vertical.Face.quad = rep(Vertical.Impact.GMM, 12))
 
-print(new_data)
+#cgc-rnd-python-websit
+
+#Predict dataframe
+
+#predict_data <- data.frame(predict_data)
 
 
+model_lc <- function(newdata) {
+  
+  predict_data = c()
+  predict_data$Model = new_data$Model
+  predict_data$Length = new_data$Length
+  predict_data$Ball.Speed <- predict(lm.Ball.Speed.normalize, re.form= NA, newdata = new_data)
+  predict_data$Launch.Angle <- predict(lm.Launch.Angle.normalize, re.form= NA, newdata = new_data)
+  predict_data$Back.Spin <- predict(lm.Back.Spin.normalize, re.form= NA, newdata = new_data)
+  predict_data$Side.Angle <- predict(lm.Side.Angle.normalize, re.form= NA, newdata = new_data)
+  predict_data$Side.Spin <- predict(lm.Side.Spin.normalize, re.form= NA, newdata = new_data)
+  return(predict_data)
+  
+}
+
+#print(predict_data)
 
 #BELOW IS A TEMPLATE FOR THE SHINY APP
 # This is a Shiny web application. You can run the application by clicking
@@ -191,10 +212,69 @@ print(new_data)
 #mycss <- ".irs-bar, .irs-bar-edge, .irs-single, .irs-grid-pol, .js-irs-0 .irs-to,.js-irs-0 .irs-from { background: red;  border-color: red;}"
 
 # Define UI ----
-ui <- fluidPage()
+ui <- fluidPage(
+  
+  
+  titlePanel(tagList(
+    h1("Iron Fitting App - Beta",
+      align = "center"
+    )
+  )),
+  
+  
+  fluidRow(
+    dataTableOutput("launch.conditions")
+  ),
+  
+  fluidRow(textOutput("test")
+  ),
+  
+  fluidRow(
+    dataTableOutput("aero")
+  ),
+)
+
+source_python('python_ref.py')
 
 # Define server logic ----
-server <- function(input, output) {}
+server <- function(input, output) {
+  
+  
+  output$launch.conditions <- renderDataTable({
+
+    data <- as.data.frame(model_lc())
+
+    return(datatable(data))
+
+    })
+
+  output$test <- renderText({
+
+    returnedText = testMethod()
+
+    })
+  
+  output$aero <- renderDataTable({
+
+    data <- as.data.frame(model_lc())
+    model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    colnames(data) <- as.character(model_col_names)
+
+    aero_data <- data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    #aero_data <- as.data.frame(aero_data)
+    test <- aerotest(aero_data)
+    
+    #print(test)
+    #test <- as.data.frame(reticulate::py$test)
+    #print(test)
+
+    return(datatable(test))
+    #returnedText = testMethod()
+
+  })
+  
+  
+}
 
 # Run the app ----
 shinyApp(ui = ui, server = server)
