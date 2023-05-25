@@ -418,12 +418,11 @@ plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Vertical.Face.qu
 ## Backspin Evaluation
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
-# lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
-#            # Fixed-effects
-#            1 + Model + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad +
-#              Length:Pitch + Length:Vertical.Face.quad + Static.Loft:Club.Speed.quad + Static.Loft:Vertical.Face.quad +
-#            # Random-effects
-#            (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
+           # Fixed-effects
+           1 + Model:Length + Model:Static.Loft + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
+           # Random-effects
+           (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
 
 ggpredict(lm.Back.Spin.normalize)
 
@@ -448,6 +447,12 @@ plot_model(lm.Back.Spin.normalize, type = "pred", terms = c("Vertical.Face.quad"
 ## Side Angle Evaluation
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
+lm.Side.Angle.normalize <-lmer(Side.Angle.quad ~
+           # Fixed-effects
+           1 + Length*Face.To.Target.quad + Length*Lateral.Face.quad +
+           # Random-effects
+           (1 + Face.To.Target.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
+
 ggpredict(lm.Side.Angle.normalize)
 
 plot_model(lm.Side.Angle.normalize, type = "pred", terms = c("Club.Speed.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
@@ -462,9 +467,15 @@ plot_model(lm.Side.Angle.normalize, type = "pred", terms = c("Lateral.Face.quad"
 ## Sidespin Evaluation
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
+lm.Side.Spin.normalize <-lmer(Side.Spin.quad ~
+                                # Fixed-effects
+                                1 + Face.To.Path.quad + Lateral.Face.quad  +
+                                # Random-effects
+                                (1 + Face.To.Path.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
+
 ggpredict(lm.Side.Spin.normalize)
 
-plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Club.Speed.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
+#plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Club.Speed.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
 
 plot_model(lm.Side.Spin.normalize, type = "pred", terms = c("Face.To.Path.quad", "Length"), show.data = TRUE)+theme_sjplot()+theme_classic()
 

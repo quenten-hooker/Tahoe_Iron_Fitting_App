@@ -6,6 +6,9 @@ import seaborn as sns
 import scipy as scipy
 import downrange.downrange as downrange
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 environment = {
         'env_temp_F':  75, #[deg F]
         'env_rh-percent' : 50, #[% relative humidity]
@@ -41,7 +44,7 @@ def defaultdownrange(df: pd.DataFrame,LaunchColumnnames: List[str] = ['Ballspeed
 
     d=downrange.Downrange()
     predictionshots=df.apply(d.downrangefromdf,axis=1,lstdefault=LaunchColumnnames)
-    print(predictionshots)
+    #print(predictionshots)
 
     return predictionshots
   
@@ -68,7 +71,7 @@ def aerotest(aero_data):
     
     data = defaultdownrange(aero_data) 
     #data = data["carrydist", "carrydisp"]
-    print(data)
+    #print(data)
     
     # #py_aero_predict = r.aero_data
     # py_aero_predict = aero_data
