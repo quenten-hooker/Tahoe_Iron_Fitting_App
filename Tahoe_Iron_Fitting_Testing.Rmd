@@ -334,11 +334,11 @@ lm.Ball.Speed.normalize <-lmer(Ball.Speed.quad ~
            (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
 
 lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
-           # Fixed-effects
-           1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + Vertical.Face.quad + 
-             Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
-           # Random-effects
-           (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+                                   # Fixed-effects
+                                   1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + Vertical.Face.quad + 
+                                   Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
+                                   # Random-effects
+                                   (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
 
 lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
            # Fixed-effects
@@ -383,12 +383,12 @@ plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Lateral.Face.quad"
 ## Launch Angle Evaluation
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
-# lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
-#            # Fixed-effects
-#            1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + 
-#              Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
-#            # Random-effects
-#            (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
+                                   # Fixed-effects
+                                   1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + Vertical.Face.quad + 
+                                   Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
+                                   # Random-effects
+                                   (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
 
 #summary(lm.Launch.Angle.normalize)
 
@@ -419,10 +419,10 @@ plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Vertical.Face.qu
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
 lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
-           # Fixed-effects
-           1 + Model:Length + Model:Static.Loft + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
-           # Random-effects
-           (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+                                # Fixed-effects
+                                1 + Model:Length + Static.Loft + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
+                                # Random-effects
+                                (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
 
 ggpredict(lm.Back.Spin.normalize)
 

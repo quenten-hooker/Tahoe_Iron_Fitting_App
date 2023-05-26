@@ -5,10 +5,15 @@
 # 4) plots results
 
 # To do
-# 1) go button?
+# 1) check all models 
+# 2) include new data
+# 3) trigger button
+# 4) Change UI
+# 5) How to deploy
 
 # # Load Packages
 library("ggplot2")
+library('tidyr')
 library("dplyr")
 library("reticulate")
 library('lme4')
@@ -55,9 +60,6 @@ use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/pytho
 # library('png')
 
 # Player images
-
-# Example input
-player_pitch <- -5.0
 
 # Load player training data
 Data.Combined <- read.csv('Data_All_Filtered.csv')
@@ -160,12 +162,9 @@ set.seed(6)#14
 x <- rnorm(8, 0, 1)
 Lateral.Impact.GMM <- scales::rescale(x, to = c(-15, 15), from = range(x))
 
-print(mean(Lateral.Impact.GMM))
-
 set.seed(14)
 y <- rnorm(8, 0, 1)
 Vertical.Impact.GMM <- scales::rescale(y, to = c(-20, 0), from = range(y))
-print(mean(Vertical.Impact.GMM))
 
 
 new_data = c()
@@ -239,7 +238,7 @@ ui <- fluidPage(
   
   
   titlePanel(tagList(
-    h1("Iron Fitting App - Beta",
+    h1("Tahoe Iron Performance App",
       align = "center"
     )
   )),
@@ -250,19 +249,22 @@ ui <- fluidPage(
     label = strong(HTML('&nbsp;'), "Swing Speed"),
     min = 50,
     max = 110,
-    value = c(80),
+    value = c(90),
     width = '390px'
   ),
   selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
   selectInput("lean", "Handle Lean", choices = c("Forward", "Neutral", "Backward")),
   
   # fluidRow(
-  #   dataTableOutput("launch.conditions")
+  #   dataTableOutput("trajectory")
   # ),
   
   # fluidRow(
   #   dataTableOutput("aero")
   # ),
+  
+  fluidRow(
+    plotOutput("plottrajectory")),
   
   fluidRow(
     plotOutput("plotdownrange")),
@@ -299,26 +301,64 @@ server <- function(input, output) {
     )
   })
   
-  
-  
+  launch_data <- reactive({
+    
+    test <- as.data.frame(new_data_create(input_df()$speed, input_df()$attack, input_df()$lean))
+    launch_data <- model_lc(test)
+
+    return(launch_data)
+  })
   
   downrange_data <- reactive({
     
-    test <- as.data.frame(new_data_create(input_df()$speed, input_df()$attack, input_df()$lean))
-    launch_data <- as.data.frame(model_lc(test))
+    launch_data <- as.data.frame(launch_data())
     model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    colnames(launch_data) <- as.character(model_col_names)
-    
+    colnames(launch_data) <- model_col_names
     aero_data <- launch_data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    aero_predict <- aerotest(aero_data)
-    downrange_data <- aero_predict %>% select(carrydisp, carrydist)
-    
+    aero_data <- aerotest(aero_data)
+    downrange_data <- aero_data %>% select(carrydisp, carrydist)
     final_data <- cbind(launch_data, downrange_data)
-    
-    #print(final_data)
-    
-    return(final_data)
+    final_data <- final_data %>% group_by(Model, Club) %>% mutate(carrydisp.mean = mean(carrydisp), carrydist.mean = mean(carrydist)) %>% mutate(carrydisp.c = carrydisp - carrydisp.mean, carrydist.c = carrydist - carrydist.mean)
+    print(final_data)
 
+    return(final_data)
+  })
+  
+  trajectory <- reactive({
+    
+    launch_data <- as.data.frame(launch_data())
+    launch_data <- launch_data %>% group_by(Model, Club) %>% summarise(Ball.Speed = mean(Ball.Speed), 
+                                                                       Launch.Angle = mean(Launch.Angle),
+                                                                       Back.Spin = mean(Back.Spin), 
+                                                                       Side.Angle = mean(Side.Angle),
+                                                                       Side.Spin = mean(Side.Spin))
+    
+    model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    colnames(launch_data) <- model_col_names
+    aero_data <- aerotest(launch_data)
+    traj_X_data <- aero_data[["X yards"]]
+    traj_X_data <- as.data.frame(do.call(cbind, traj_X_data))
+    traj_X_data <- pivot_longer(traj_X_data, cols=everything()) %>% arrange(name)
+    traj_X_data$Model[traj_X_data$name == "V1" | traj_X_data$name == "V2" | traj_X_data$name == "V3" | traj_X_data$name == "V4" | traj_X_data$name == "V5" | traj_X_data$name == "V6"] <- "Tahoe HL"
+    traj_X_data$Model[traj_X_data$name == "V7" | traj_X_data$name == "V8" | traj_X_data$name == "V9" | traj_X_data$name == "V10" | traj_X_data$name == "V11" | traj_X_data$name == "V12"] <- "Tahoe Std"
+    traj_X_data$Club[traj_X_data$name == "V1" | traj_X_data$name == "V7"] <- "5"
+    traj_X_data$Club[traj_X_data$name == "V2" | traj_X_data$name == "V8"] <- "6"
+    traj_X_data$Club[traj_X_data$name == "V3" | traj_X_data$name == "V9"] <- "7"
+    traj_X_data$Club[traj_X_data$name == "V4" | traj_X_data$name == "V10"] <- "8"
+    traj_X_data$Club[traj_X_data$name == "V5" | traj_X_data$name == "V11"] <- "9"
+    traj_X_data$Club[traj_X_data$name == "V6" | traj_X_data$name == "V12"] <- "PW"
+    
+    traj_Z_data <- aero_data[["Z yards"]]
+    traj_Z_data <- as.data.frame(do.call(cbind, traj_Z_data))
+    traj_Z_data <- pivot_longer(traj_Z_data, cols=everything()) %>% arrange(name)
+    
+    Traj <- data.frame(Model = as.factor(traj_X_data$Model),
+                       Club = as.factor(traj_X_data$Club),
+                       X.yards = traj_X_data$value,
+                       Z.yards = traj_Z_data$value)
+                       
+      
+    return(Traj) 
   })
   
   output$launch.conditions <- renderDataTable({
@@ -351,11 +391,26 @@ server <- function(input, output) {
   
   output$plotdownrange <- renderPlot({
     
-    ggplot(NULL,  aes(x = carrydisp, y = carrydist, color = Model, shape = Club)) + geom_point(data = downrange_data()) +
+    ggplot(NULL,  aes(x = carrydisp.c, y = carrydist, color = Model, shape = Club)) + geom_point(data = downrange_data()) +
     stat_ellipse(data = downrange_data(), level = 0.85, type = "t")+ theme_classic(base_size = 18)+theme(legend.position = "right") + 
     ylab("Carry.predict (yds)") + xlab("Offline.predict (yds)") + xlim(-5, 5)
     
       })
+  
+  
+  output$plottrajectory <- renderPlot({
+    
+    ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
+      geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
+    
+    })
+  
+  # output$plottrajectory <- renderPlot({
+  #   
+  #   
+  #   
+  #   
+  # })
   
   
   
