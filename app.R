@@ -5,11 +5,13 @@
 # 4) plots results
 
 # To do
-# 1) check all models 
-# 2) include new data
-# 3) trigger button
+# 1) include new data
+# 2) check all models 
+# 3) why does it crash every other time?
+# 3) dynamically change length and loft?
+# 3) save models?
 # 4) Change UI
-# 5) How to deploy
+# 5) How to deploy with aero?
 
 # # Load Packages
 library("ggplot2")
@@ -238,22 +240,24 @@ ui <- fluidPage(
   
   
   titlePanel(tagList(
-    h1("Tahoe Iron Performance App",
-      align = "center"
-    )
+    h1("Tahoe Iron Performance App", align = "center"))),
+  fluidRow(
+    column(4,
+           wellPanel(h4(strong("7 Iron Club Delivery")),
+             setSliderColor(c("darkred"), c(1)),
+             sliderInput("speed",
+                         label = strong(HTML('&nbsp;'), "Swing Speed"),
+                         min = 50, max = 110, step = 5, value = c(90), width = '390px'),
+             selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
+             selectInput("lean", "Handle Lean", choices = c("Forward", "Neutral", "Backward")),
+             actionButton("predict", "Submit to predict")
   )),
-  
-  setSliderColor(c("darkred"), c(1)),
-  sliderInput(
-    "speed",
-    label = strong(HTML('&nbsp;'), "Swing Speed"),
-    min = 50,
-    max = 110,
-    value = c(90),
-    width = '390px'
-  ),
-  selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
-  selectInput("lean", "Handle Lean", choices = c("Forward", "Neutral", "Backward")),
+  column(8, 
+         plotOutput("plottrajectory"),
+         dataTableOutput("carrytable")
+         )
+  )
+)
   
   # fluidRow(
   #   dataTableOutput("trajectory")
@@ -262,14 +266,7 @@ ui <- fluidPage(
   # fluidRow(
   #   dataTableOutput("aero")
   # ),
-  
-  fluidRow(
-    plotOutput("plottrajectory")),
-  
-  fluidRow(
-    plotOutput("plotdownrange")),
-  
-)
+
 
 source_python('python_ref.py')
 
@@ -287,11 +284,11 @@ server <- function(input, output) {
     }
     
     if (input$lean == "Forward"){
-      lean = -5.0
+      lean = -2.0
     } else if (input$lean == "Neutral"){
       lean = 0.0
     } else if (input$lean == "Backward"){
-      lean = 5.0
+      lean = 2.0
     }
     
     data.frame(
@@ -301,7 +298,8 @@ server <- function(input, output) {
     )
   })
   
-  launch_data <- reactive({
+
+  launch_data <- eventReactive(input$predict, {
     
     test <- as.data.frame(new_data_create(input_df()$speed, input_df()$attack, input_df()$lean))
     launch_data <- model_lc(test)
@@ -310,18 +308,22 @@ server <- function(input, output) {
   })
   
   downrange_data <- reactive({
-    
-    launch_data <- as.data.frame(launch_data())
-    model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    colnames(launch_data) <- model_col_names
-    aero_data <- launch_data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    aero_data <- aerotest(aero_data)
-    downrange_data <- aero_data %>% select(carrydisp, carrydist)
-    final_data <- cbind(launch_data, downrange_data)
-    final_data <- final_data %>% group_by(Model, Club) %>% mutate(carrydisp.mean = mean(carrydisp), carrydist.mean = mean(carrydist)) %>% mutate(carrydisp.c = carrydisp - carrydisp.mean, carrydist.c = carrydist - carrydist.mean)
-    print(final_data)
 
-    return(final_data)
+  launch_data <- as.data.frame(launch_data())
+  launch_data <- launch_data %>% group_by(Model, Club) %>% summarise(Ball.Speed = mean(Ball.Speed),
+                                                                     Launch.Angle = mean(Launch.Angle),
+                                                                     Back.Spin = mean(Back.Spin),
+                                                                     Side.Angle = mean(Side.Angle),
+                                                                     Side.Spin = mean(Side.Spin))
+
+  model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+  colnames(launch_data) <- model_col_names
+  aero_data <- aerotest(launch_data)
+  downrange_data <- aero_data %>% select(carrydisp, carrydist)
+  final_data <- cbind(launch_data, downrange_data)
+  #print(final_data)
+
+     return(final_data)
   })
   
   trajectory <- reactive({
@@ -361,41 +363,33 @@ server <- function(input, output) {
     return(Traj) 
   })
   
-  output$launch.conditions <- renderDataTable({
-
-    data <- as.data.frame(model_lc())
-
-    return(datatable(data))
-
-    })
-
-  output$aero <- renderDataTable({
-
-    data <- as.data.frame(model_lc())
-    model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    colnames(data) <- as.character(model_col_names)
-
-    aero_data <- data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
-    #aero_data <- as.data.frame(aero_data)
-    test <- aerotest(aero_data)
-    
-    
-    #print(test)
-    #test <- as.data.frame(reticulate::py$test)
-    #print(test)
-
-    return(datatable(test))
-    #returnedText = testMethod()
-
-  })
+  # output$aero <- renderDataTable({
+  # 
+  #   data <- as.data.frame(model_lc())
+  #   model_col_names <- c("Model", "Length", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+  #   colnames(data) <- as.character(model_col_names)
+  # 
+  #   aero_data <- data %>% select("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+  #   #aero_data <- as.data.frame(aero_data)
+  #   test <- aerotest(aero_data)
+  #   
+  #   
+  #   #print(test)
+  #   #test <- as.data.frame(reticulate::py$test)
+  #   #print(test)
+  # 
+  #   return(datatable(test))
+  #   #returnedText = testMethod()
+  # 
+  # })
   
-  output$plotdownrange <- renderPlot({
-    
-    ggplot(NULL,  aes(x = carrydisp.c, y = carrydist, color = Model, shape = Club)) + geom_point(data = downrange_data()) +
-    stat_ellipse(data = downrange_data(), level = 0.85, type = "t")+ theme_classic(base_size = 18)+theme(legend.position = "right") + 
-    ylab("Carry.predict (yds)") + xlab("Offline.predict (yds)") + xlim(-5, 5)
-    
-      })
+  # output$plotdownrange <- renderPlot({
+  #   
+  #   ggplot(NULL,  aes(x = carrydisp.c, y = carrydist, color = Model, shape = Club)) + geom_point(data = downrange_data()) +
+  #   stat_ellipse(data = downrange_data(), level = 0.85, type = "t")+ theme_classic(base_size = 18)+theme(legend.position = "right") + 
+  #   ylab("Carry.predict (yds)") + xlab("Offline.predict (yds)") + xlim(-5, 5)
+  #   
+  #     })
   
   
   output$plottrajectory <- renderPlot({
@@ -405,19 +399,38 @@ server <- function(input, output) {
     
     })
   
-  # output$plottrajectory <- renderPlot({
-  #   
-  #   
-  #   
-  #   
-  # })
-  
-  
+  output$carrytable <- renderDataTable({
+
+    launch_data <- as.data.frame(launch_data())
+    launch_data <- launch_data %>% group_by(Model, Club) %>% summarise(Ball.Speed = mean(Ball.Speed),
+                                                                       Launch.Angle = mean(Launch.Angle),
+                                                                       Back.Spin = mean(Back.Spin),
+                                                                       Side.Angle = mean(Side.Angle),
+                                                                       Side.Spin = mean(Side.Spin))
+    
+    model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+    colnames(launch_data) <- model_col_names
+    aero_data <- aerotest(launch_data)
+    downrange_data <- aero_data %>% select(carrydisp, carrydist)
+    final_data <- cbind(launch_data, downrange_data)
+    final_data <- final_data %>% group_by(Club, Model) %>% summarise(Carry_Distance = round(mean(carrydist),1)) %>% rename(
+        'Carry Distance (yds)' = Carry_Distance)
+    
+    #return(datatable(final_data))
+    
+    return(datatable(final_data,     options = list(
+      initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});$(this.api().table().body()).css({})}"), dom = 't', ordering = T, pageLength = 12),
+      rownames = FALSE))
+
+    #   return(datatable(final_data,     options = list(
+    #   initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});}"), dom = 't', ordering = F, columnDefs = list(list(className = 'dt-center', targets = 1:3))
+    # ), rownames = FALSE, colnames=c("Club", "Model", "Carry Distance (yds)")) %>%
+    #   formatStyle(columns = 1:3,  color = 'black', backgroundColor = 'white', fontSize = '15px'))
+
+  })
   
   
 }
 
 # Run the app ----
 shinyApp(ui = ui, server = server)
-
-
