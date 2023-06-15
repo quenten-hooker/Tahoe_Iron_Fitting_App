@@ -13,6 +13,19 @@
 # 4) Change UI
 # 5) How to deploy with aero?
 
+
+# toggle of inputs generic vs. detailed
+# wedges, tahoe iron, and hybrid (selection of where)
+
+# Input A - Generic
+# Club head speed, angle of attack, low/medium/high trajectory 
+
+# Input B - detailed
+# Ball speed, LA, Backs
+# maybe change length/loft.
+
+# On Callaway's website (new deadline)
+
 # # Load Packages
 library("ggplot2")
 library('tidyr')
@@ -284,11 +297,11 @@ server <- function(input, output) {
     }
     
     if (input$lean == "Forward"){
-      lean = -2.0
+      lean = -4.0
     } else if (input$lean == "Neutral"){
-      lean = 0.0
+      lean = -2.0
     } else if (input$lean == "Backward"){
-      lean = 2.0
+      lean = 0.0
     }
     
     data.frame(
