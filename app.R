@@ -36,6 +36,7 @@ library('DT')
 library('ggeffects')
 library('shiny')
 library('shinyWidgets')
+library('shinythemes')
 use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 # library("tidyr")
 # library("ggpubr")
@@ -249,28 +250,39 @@ model_lc <- function(new_data) {
 #mycss <- ".irs-bar, .irs-bar-edge, .irs-single, .irs-grid-pol, .js-irs-0 .irs-to,.js-irs-0 .irs-from { background: red;  border-color: red;}"
 
 # Define UI ----
-ui <- fluidPage(
-  
-  
-  titlePanel(tagList(
-    h1("Tahoe Iron Performance App", align = "center"))),
-  fluidRow(
-    column(4,
-           wellPanel(h4(strong("7 Iron Club Delivery")),
-             setSliderColor(c("darkred"), c(1)),
+ui <- navbarPage(theme = shinytheme("darkly"),
+  title = h4(strong("Tahoe Iron Performance")),
+  tabPanel(title = "Consumer",
+           sidebarLayout(
+             sidebarPanel(h4(strong("7 Iron Club Delivery")),
              sliderInput("speed",
                          label = strong(HTML('&nbsp;'), "Swing Speed"),
                          min = 50, max = 110, step = 5, value = c(90), width = '390px'),
              selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
-             selectInput("lean", "Handle Lean", choices = c("Forward", "Neutral", "Backward")),
+             selectInput("lean", "Shaft Lean", choices = c("Forward", "Neutral", "Backward")),
              actionButton("predict", "Submit to predict")
-  )),
-  column(8, 
+         ),
+         mainPanel( 
          plotOutput("plottrajectory"),
          dataTableOutput("carrytable")
-         )
+         ))),
+  tabPanel(title = "Fitter",
+           sidebarLayout(
+             sidebarPanel(h4(strong("7 Iron Club Delivery")),
+                          sliderInput("ballspeed",
+                                      label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
+                                      min = 50, max = 110, step = 5, value = c(90), width = '390px'),
+                          sliderInput("launch",
+                                      label = strong(HTML('&nbsp;'), "Launch Angle (deg)"),
+                                      min = 5, max = 20, step = 5, value = c(90), width = '390px'),
+                          sliderInput("backs",
+                                      label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
+                                      min = 3000, max = 9000, step = 500, value = c(7000), width = '390px'),
+                          actionButton("predict", "Submit to predict")
+                          ),
+           mainPanel())
+           )
   )
-)
   
   # fluidRow(
   #   dataTableOutput("trajectory")
@@ -431,9 +443,8 @@ server <- function(input, output) {
     
     #return(datatable(final_data))
     
-    return(datatable(final_data,     options = list(
-      initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});$(this.api().table().body()).css({})}"), dom = 't', ordering = T, pageLength = 12),
-      rownames = FALSE))
+    return(datatable(final_data, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE),
+                     rownames= FALSE))
 
     #   return(datatable(final_data,     options = list(
     #   initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});}"), dom = 't', ordering = F, columnDefs = list(list(className = 'dt-center', targets = 1:3))
