@@ -7,12 +7,11 @@
 # To do
 # 1) include new data
 # 2) check all models 
-# 3) why does it crash every other time?
+# 3) random crashes?
 # 3) dynamically change length and loft?
 # 3) save models?
 # 4) Change UI
 # 5) How to deploy with aero?
-
 
 # toggle of inputs generic vs. detailed
 # wedges, tahoe iron, and hybrid (selection of where)
@@ -24,7 +23,9 @@
 # Ball speed, LA, Backs
 # maybe change length/loft.
 
-# On Callaway's website (new deadline)
+# to do
+# size of each model 
+# azure function with model inside code, javascript, tensorflow javascript, dg3s, learn how to do python tensorflow.
 
 # # Load Packages
 library("ggplot2")
@@ -37,6 +38,7 @@ library('ggeffects')
 library('shiny')
 library('shinyWidgets')
 library('shinythemes')
+library('plotly')
 use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 # library("tidyr")
 # library("ggpubr")
@@ -210,19 +212,24 @@ model_lc <- function(new_data) {
   predict_data = c()
   predict_data$Model = new_data$Model
   predict_data$Length = new_data$Length
+  #predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 35.5] <- "AW"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 35.75] <- "PW"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 36.00] <- "9"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 36.625] <- "8"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 37.25] <- "7"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 37.875] <- "6"
   predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 38.50] <- "5"
-  #predict_data$Club[predict_data$Club == "Tahoe" & predict_data$Length== 39.125] <- "4"
+  #predict_data$Club[predict_data$Model == "Tahoe Std" & predict_data$Length== 39.125] <- "4"
+  
+  #predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 35.5] <- "AW"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 35.75] <- "PW"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.00] <- "9"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 36.75] <- "8"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 37.50] <- "7"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 38.25] <- "6"
   predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 39.00] <- "5"
+  #predict_data$Club[predict_data$Model == "Tahoe HL" & predict_data$Length== 39.75] <- "4"
+  
   #predict_data$Club[predict_data$Club == "Tahoe HL" & predict_data$Length== 39.750] <- "4"
   predict_data$Ball.Speed <- predict(lm.Ball.Speed.normalize, re.form= NA, newdata = new_data)
   predict_data$Launch.Angle <- predict(lm.Launch.Angle.normalize, re.form= NA, newdata = new_data)
@@ -251,7 +258,7 @@ model_lc <- function(new_data) {
 
 # Define UI ----
 ui <- navbarPage(theme = shinytheme("darkly"),
-  title = h4(strong("Tahoe Iron Performance")),
+  title = h4(strong("Tahoe Performance")),
   tabPanel(title = "Consumer",
            sidebarLayout(
              sidebarPanel(h4(strong("7 Iron Club Delivery")),
@@ -259,22 +266,24 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                          label = strong(HTML('&nbsp;'), "Swing Speed"),
                          min = 50, max = 110, step = 5, value = c(90), width = '390px'),
              selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
-             selectInput("lean", "Shaft Lean", choices = c("Forward", "Neutral", "Backward")),
-             actionButton("predict", "Submit to predict")
+             selectInput("lean", "Shaft Lean", choices = c("Forward", "Neutral")),
+             actionButton("predict", "Submit to predict"),
+             width = 5
          ),
          mainPanel( 
-         plotOutput("plottrajectory"),
-         dataTableOutput("carrytable")
+         plotlyOutput("plottrajectory"),
+         dataTableOutput("carrytable"),
+         width = 7
          ))),
   tabPanel(title = "Fitter",
            sidebarLayout(
-             sidebarPanel(h4(strong("7 Iron Club Delivery")),
+             sidebarPanel(h4(strong("7 Iron launch Conditions")),
                           sliderInput("ballspeed",
                                       label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
                                       min = 50, max = 110, step = 5, value = c(90), width = '390px'),
                           sliderInput("launch",
                                       label = strong(HTML('&nbsp;'), "Launch Angle (deg)"),
-                                      min = 5, max = 20, step = 5, value = c(90), width = '390px'),
+                                      min = 5, max = 20, step = 5, value = c(12), width = '390px'),
                           sliderInput("backs",
                                       label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
                                       min = 3000, max = 9000, step = 500, value = c(7000), width = '390px'),
@@ -309,10 +318,8 @@ server <- function(input, output) {
     }
     
     if (input$lean == "Forward"){
-      lean = -4.0
+      lean = -3.0
     } else if (input$lean == "Neutral"){
-      lean = -2.0
-    } else if (input$lean == "Backward"){
       lean = 0.0
     }
     
@@ -379,10 +386,17 @@ server <- function(input, output) {
     traj_Z_data <- as.data.frame(do.call(cbind, traj_Z_data))
     traj_Z_data <- pivot_longer(traj_Z_data, cols=everything()) %>% arrange(name)
     
+    traj_Y_data <- aero_data[["Y yards"]]
+    traj_Y_data <- as.data.frame(do.call(cbind, traj_Y_data))
+    traj_Y_data <- pivot_longer(traj_Y_data, cols=everything()) %>% arrange(name)
+    
     Traj <- data.frame(Model = as.factor(traj_X_data$Model),
                        Club = as.factor(traj_X_data$Club),
                        X.yards = traj_X_data$value,
-                       Z.yards = traj_Z_data$value)
+                       Z.yards = traj_Z_data$value,
+                       Y.yards = traj_Y_data$value)
+    
+    print(Traj)
                        
       
     return(Traj) 
@@ -417,11 +431,37 @@ server <- function(input, output) {
   #     })
   
   
-  output$plottrajectory <- renderPlot({
+  output$plottrajectory <- renderPlotly({
     
-    ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
-      geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
     
+    
+    axx <- list(
+      title = "Distance (yds)"
+    )
+    
+    axy <- list(
+      nticks = 3,
+      range = c(-10,10),
+      title = "Dispersion (yds)"
+    )
+    
+    axz <- list(
+      title = "Height (ft)"
+    )
+    
+    
+    
+    #ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
+    #  geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
+    fig <- plot_ly(trajectory(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("black", "blue")) %>%
+      layout(xaxis = list(title = 'Distance (yds)', showgrid = F, zeroline = F), 
+             yaxis = list(title = '', showgrid = F, showticklabels = F))
+    
+    
+    # layout(showlegend = FALSE,
+    #        yaxis = list(showline= T, linewidth=2, linecolor='black', showticklabels = F)
+      #layout(scene = list(xaxis=axx,yaxis=axz))
+      
     })
   
   output$carrytable <- renderDataTable({
@@ -438,13 +478,27 @@ server <- function(input, output) {
     aero_data <- aerotest(launch_data)
     downrange_data <- aero_data %>% select(carrydisp, carrydist)
     final_data <- cbind(launch_data, downrange_data)
-    final_data <- final_data %>% group_by(Club, Model) %>% summarise(Carry_Distance = round(mean(carrydist),1)) %>% rename(
-        'Carry Distance (yds)' = Carry_Distance)
+    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0))
+    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0))
     
-    #return(datatable(final_data))
+    final_data <- cbind(final_data.1[2:4], final_data.2[3:4])
+    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Gapping (yds)", "Carry Distance (yds)", "Gapping (yds)")
     
-    return(datatable(final_data, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE),
-                     rownames= FALSE))
+    sketch = htmltools::withTags(table(
+      class = 'display',
+      thead(
+        tr(
+          th(colspan = 1, ''),
+          th(class = 'dt-center', colspan = 2, 'Tahoe HL'),
+          th(class = 'dt-center', colspan = 2, 'Tahoe Std')
+        ),
+        tr(
+          lapply(colnames(final_data), th)
+        )
+      )
+    ))
+    
+    return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, columnDefs = list(list(className = 'dt-center', targets = 0:4))), rownames= FALSE))
 
     #   return(datatable(final_data,     options = list(
     #   initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});}"), dom = 't', ordering = F, columnDefs = list(list(className = 'dt-center', targets = 1:3))

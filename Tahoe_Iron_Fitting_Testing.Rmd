@@ -815,3 +815,18 @@ ggplot(predict_trajectory, aes(x = X.yards, y = Z.yards*3, color = Model, shape 
 ```
 
 
+#Advanced page
+Goal, input a ball speed, launch, spin, and get all the trajectories 
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+lm.Ball.Speed.normalize <-lmer(Ball.Speed ~
+           # Fixed-effects
+           1 + Model + Club.Speed.quad + Pitch + Length:Club.Speed.quad + Length:Pitch + Vertical.Face.quad + Lateral.Face.quad +
+             Model:Vertical.Face.quad + Model:Lateral.Face.quad + Model:I(Vertical.Face.quad^2) + Model:I(Lateral.Face.quad^2) +
+           # Random-effects
+           (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
+
+```
+
+
