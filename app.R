@@ -449,13 +449,19 @@ server <- function(input, output) {
       title = "Height (ft)"
     )
     
-    
-    
+    Data <- as.data.frame(trajectory())
+    print(range(Data$X.yards))
     #ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
     #  geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
+    
     fig <- plot_ly(trajectory(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("black", "blue")) %>%
       layout(xaxis = list(title = 'Distance (yds)', showgrid = F, zeroline = F), 
              yaxis = list(title = '', showgrid = F, showticklabels = F))
+    
+    fig <- fig %>% add_lines(y = 0, x = range(Data$X.yards), line = list(color = "grey", width = 2), inherit = FALSE, showlegend = FALSE)
+    
+    #fig <- plot_ly(trajectory(), x = ~X.yards)
+    #fig <- fig %>% add_trace(y = ~Z.yards, name = 'test',mode = 'lines') 
     
     
     # layout(showlegend = FALSE,

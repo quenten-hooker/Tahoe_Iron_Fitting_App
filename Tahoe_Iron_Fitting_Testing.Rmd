@@ -55,6 +55,20 @@ library("lme4")
 library("sjPlot")
 library("ggeffects")
 
+library("ggplot2")
+library('tidyr')
+library("dplyr")
+library("reticulate")
+library('lme4')
+library('DT')
+library('ggeffects')
+library('shiny')
+library('shinyWidgets')
+library('shinythemes')
+library('plotly')
+library('caTools')
+library('randomForest')
+
 ```
 
 #Glob and format to merge Core panel data
@@ -282,6 +296,10 @@ ggplot(Data.Combined, aes(x = Length, y = Angle.Of.Attack.quad)) + geom_point(ae
 ggplot(Data.Combined, aes(x = Length, y = Club.Path.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
 
 ggplot(Data.Combined, aes(x = Length, y = Pitch)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+
+ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
 
 
 lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
@@ -815,18 +833,814 @@ ggplot(predict_trajectory, aes(x = X.yards, y = Z.yards*3, color = Model, shape 
 ```
 
 
-#Advanced page
-Goal, input a ball speed, launch, spin, and get all the trajectories 
+# Sim test for distance from opening for randy
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+source_python('python_ref.py')
+
+
+predict_data = c()
+# predict_data <- data.frame(Ball.Speed = rep(c(82), each = 3),
+#                            Launch.Angle = rep(c(33, 39, 45), 1),
+#                            Back.spin = rep(c(12800), 3),
+#                            Side.Angle = rep(c(0), 3),
+#                            Side.Spin = rep(c(0), 3))
+
+predict_data <- data.frame(Ball.Speed = c(175, 174.4, 173.8),
+                           Launch.Angle = c(9.6, 10.33, 11.06),
+                           Back.spin = c(2798, 2930, 3062),
+                           Side.Angle = rep(c(0), 3),
+                           Side.Spin = rep(c(0), 3))
+
+
+model_col_names <- c("Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
+colnames(predict_data) <- model_col_names
+aero_data <- aerotest(predict_data)
+
+
+downrange_data <- aero_data %>% select(carrydisp, carrydist)
+
+
+traj_Z_data <- aero_data[["Z yards"]]
+traj_Z_data <- as.data.frame(do.call(cbind, traj_Z_data))
+traj_Z_data <- pivot_longer(traj_Z_data, cols=everything()) %>% arrange(name)
+
+traj_X_data <- aero_data[["X yards"]]
+traj_X_data <- as.data.frame(do.call(cbind, traj_X_data))
+traj_X_data <- pivot_longer(traj_X_data, cols=everything()) %>% arrange(name)
+
+traj_Y_data <- aero_data[["Y yards"]]
+traj_Y_data <- as.data.frame(do.call(cbind, traj_Y_data))
+traj_Y_data <- pivot_longer(traj_Y_data, cols=everything()) %>% arrange(name)
+
+Traj <- data.frame(name = traj_X_data$name,
+                   X.yards = traj_X_data$value,
+                   Y.yards = traj_Y_data$value,
+                   Z.yards = traj_Z_data$value)
+
+
+Traj$name[Traj$name== "V1"] <- "BS= 82, LA= 33, backs= 12800"
+Traj$name[Traj$name== "V2"] <- "BS= 82, LA= 39, backs= 12800"
+Traj$name[Traj$name== "V3"] <- "BS= 82, LA= 45, backs= 12800"
+
+axx <- list(
+    title = "Distance (ft)"
+)
+
+axy <- list(
+  range = c(-10,10),
+  title = "Offline (ft)"
+)
+
+axz <- list(
+  title = "Height (ft)"
+)
+
+fig <- plot_ly(Traj, x = ~X.yards*3, y = ~Y.yards*3, z = ~Z.yards*3, color = ~name, type = 'scatter3d', mode = 'lines', colors = c("red", "black", "blue")) %>%
+      layout(scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
+    
+#fig <- fig %>% add_lines(y = 0, x = c(0,100), line = list(color = "grey", width = 2), inherit = FALSE, showlegend = FALSE)
+fig    
+
+
+htmlwidgets::saveWidget(
+                widget = fig, #the plotly object
+                file = "ECPC_Lab_Wedge_Sim.html", #the path & file name
+                selfcontained = TRUE #creates a single html file
+                )
+
+```
+
+
+## Advanced model building
+
+
+
+#### standard 80-20 train test evaluation, Ball Speed through set
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+sample.split(Data.Combined$Ball.Speed.quad, SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined,split_index==T)
+test <- subset(Data.Combined,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+mod_regress <-lmer(Ball.Speed.quad ~
+           # Fixed-effects
+           1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) + Model + Carry.quad +
+           # Random-effects
+           (1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) + Carry.quad | Player), data = train)
+
+#ggpredict(mod_regress)
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Ball.Speed.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+#ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+```
+
+   
+#### standard 80-20 train test evaluation, Launch Angle through set
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+sample.split(Data.Combined$Launch.Angle.quad, SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined,split_index==T)
+test <- subset(Data.Combined,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+mod_regress <-lmer(Launch.Angle.quad ~
+           # Fixed-effects
+           1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) + Model + Carry.quad +
+           # Random-effects
+           (1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) + Carry.quad | Player), data = train)
+
+#ggpredict(mod_regress)
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Launch.Angle.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+#ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+```   
+   
+   
+#### standard 80-20 train test evaluation, Backspin through set
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+sample.split(Data.Combined$Back.Spin.quad, SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined,split_index==T)
+test <- subset(Data.Combined,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+mod_regress <-lmer(Back.Spin.quad ~
+           # Fixed-effects
+           1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) + Model +
+           # Random-effects
+           (1 + Length + I(Length^2) + Static.Loft + I(Static.Loft^2) | Player), data = train)
+
+ggpredict(mod_regress)
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Back.Spin.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+#ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+```   
+           
+#### standard 80-20 train test evaluation, club head speed
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data.Combined.7I <- Data.Combined %>% filter(Club == "7 Iron")
+
+Data.Combined.7I <- Data.Combined.7I %>% filter(Club.Speed.quad < 150, Club.Speed.quad > 50) 
+
+sample.split(Data.Combined.7I$Club.Speed.quad,SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined.7I,split_index==T)
+test <- subset(Data.Combined.7I,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+# mod_regress <-lmer(Club.Speed.quad ~
+#            # Fixed-effects
+#            1 + Ball.Speed.quad*Launch.Angle.quad*Side.Angle.quad*Side.Spin.quad*Back.Spin.quad*Tags +
+#            # Random-effects
+#            (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), data = train)
+
+mod_regress <-lmer(Club.Speed.quad ~
+           # Fixed-effects
+           1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad + Tags +
+           # Random-effects
+           (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad | Player), data = train)
+
+ggpredict(mod_regress)
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Club.Speed.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+```
+
+
+#### standard 80-20 train test evaluation, attack
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data.Combined.7I <- Data.Combined %>% filter(Club == "7 Iron")
+
+Data.Combined.7I <- Data.Combined.7I 
+
+sample.split(Data.Combined.7I$Angle.Of.Attack.quad,SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined.7I,split_index==T)
+test <- subset(Data.Combined.7I,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+# mod_regress <-lmer(Club.Speed.quad ~
+#            # Fixed-effects
+#            1 + Ball.Speed.quad*Launch.Angle.quad*Side.Angle.quad*Side.Spin.quad*Back.Spin.quad*Tags +
+#            # Random-effects
+#            (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), data = train)
+
+mod_regress <-lmer(Angle.Of.Attack.quad ~
+           # Fixed-effects
+           1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad + Lateral.Face.quad +
+             Vertical.Face.quad + Tags +
+           # Random-effects
+           (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad | Player), data = train)
+
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Angle.Of.Attack.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+```
+
+#### standard 80-20 train test evaluation, loft
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data.Combined.7I <- Data.Combined %>% filter(Club == "7 Iron")
+
+Data.Combined.7I <- Data.Combined.7I 
+
+sample.split(Data.Combined.7I$Loft.quad,SplitRatio = 0.80)->split_index
+train  <- subset(Data.Combined.7I,split_index==T)
+test <- subset(Data.Combined.7I,split_index==F)
+
+
+train <- within(train, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+test <- within(test, {
+  Player <- factor(as.character(Player))
+  Tags <- factor(as.character(Tags))})
+
+
+# mod_regress <-lmer(Club.Speed.quad ~
+#            # Fixed-effects
+#            1 + Ball.Speed.quad*Launch.Angle.quad*Side.Angle.quad*Side.Spin.quad*Back.Spin.quad*Tags +
+#            # Random-effects
+#            (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), data = train)
+
+mod_regress <-lmer(Pitch ~
+           # Fixed-effects
+           1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad + Lateral.Face.quad +
+             Vertical.Face.quad + Tags + 
+           # Random-effects
+           (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad | Player), data = train)
+
+ggpredict(mod_regress)
+
+
+predict(mod_regress,test)->result_regress
+
+
+cbind(Actual=test$Loft.quad,Predicted=result_regress)->Final_Data
+as.data.frame(Final_Data)->Final_Data
+
+(Final_Data$Actual- Final_Data$Predicted)->error
+cbind(Final_Data,error)->Final_Data
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+```  
+  
+  
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data.Combined.7I <- Data.Combined %>% filter(Club == "7 Iron")
+
+
+lm.Club.Speed <-lmer(Club.Speed.quad ~
+           # Fixed-effects
+           1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad +  Tags +
+           # Random-effects
+           (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), data = Data.Combined.7I)
+
+
+# lm.Club.Speed <-lmer(Club.Speed.quad ~
+#            # Fixed-effects
+#            1 + Ball.Speed.quad*Launch.Angle.quad*Side.Angle.quad*Side.Spin.quad*Back.Spin.quad*Tags +
+#            # Random-effects
+#            (1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), data = Data.Combined.7I)
+
+# summary(lm.Club.Speed)
+# 
+# ggpredict(lm.Club.Speed)
+```
+
+## Person prediction testing - Me
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+new_data <- data.frame(Ball.Speed.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Ball.Speed.quad)),
+                       Launch.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Launch.Angle.quad)),
+                       Side.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Angle.quad)),
+                       Back.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Back.Spin.quad)),
+                       Side.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Spin.quad)),
+                       Tags = rep(c("MB21"), each = 1),
+                       Player = rep("Quenten Hooker", each = 1))
+
+#summary(lm.Club.Speed)
+
+colnames(new_data) <- c("Ball.Speed.quad", "Launch.Angle.quad", "Side.Angle.quad", "Back.Spin.quad", "Side.Spin.quad", "Tags", "Player")
+
+predict(lm.Club.Speed, re.form= ~(1 + Ball.Speed.quad + Launch.Angle.quad + Side.Angle.quad + Side.Spin.quad + Back.Spin.quad| Player), newdata = new_data)
+Data.Combined.7I %>% filter(Player == "Quenten Hooker", Tags == "MB21") %>% summarise(Club.Speed.quad = mean(Club.Speed.quad))
+```
+
+
+## Random simulations generating testing
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+new_data <- data.frame(Ball.Speed.quad = runif(100, min=110, max=130),
+                       Launch.Angle.quad = runif(100, min=15.5, max=17),
+                       Side.Angle.quad = runif(100, min=0, max=0),
+                       Back.Spin.quad = runif(100, min=6000, max=8000),
+                       Side.Spin.quad = runif(100, min=0, max=0),
+                       Tags = rep(c("Tahoe Std"), each = 100),
+                       Player = rep("Population", each = 100))
+
+predict <- data.frame(Club.Speed.quad = predict(lm.Club.Speed, re.form= NA, newdata = new_data))
+
+
+ggplot(predict, aes(x = Club.Speed.quad)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+
+```
+
+# Engage
+## Load Packages
+```{r , echo=TRUE, include = FALSE}
+
+library('odbc')
+library('DBI')
+library('dplyr')
+
+```
+
+
+## Establish Connection
+```{r, echo=FALSE, include = TRUE}
+
+con <- DBI::dbConnect(odbc::odbc(),
+                       Driver = "SQL Server",
+                       Server = 'icgEngagedb.corp.callawaygolf.com',
+                       Database = "Engage",                    
+                       Trusted_Connection = "yes")
+
+#dbListTables(con)
+```
+
+## Example SQL to grab data
+```{r, echo=FALSE, include = TRUE}
+
+Data.Engage <- DBI::dbGetQuery(con,
+                              "SELECT Date, ShotId, FittingId, AccountFullName, Location, EventName, BallFamilyName, CategoryId, CategoryName, ClubFamilyId,
+                              ClubFamilyName, MonitorTypeName, ImpactHeadSpeedMph, ImpactAttackAngleDeg, ImpactPathAngleDeg,
+                              ImpactYawAngleDeg, ImpactPitchAngleDeg, ImpactRollAngleDeg, ImpactHorizLocInch, ImpactVertLocInch,
+                              BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm, ShotApexFt,
+                              ShotMaxLateralTravelFt, ShotCarryYd, ShotCarryDispFt, ShotTotalYd, ShotTotalDispFt,
+                              ShotFlightTimeSec, SmashFactor
+                              FROM Engage.cg_Engage.vwMeasuredShotsAll;")
+
+Data.Engage %>% group_by(MonitorTypeName) %>% summarise(n())
+Data.Engage %>% group_by(Location) %>% summarise(n())
+
+Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad') %>% group_by(AccountFullName) %>% summarise(n())
+
+Data_Engage_Quad_Carlsbad <- Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad')
+
+Data_Engage_Quad_Carlsbad %>% group_by(FittingId) %>% summarise(num = n()) %>% arrange(desc(num))
+
+Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons") %>% group_by(ClubFamilyName) %>% summarise(num = n()) %>% arrange(desc(num))
+
+```
+
+#### MEM and RF, club head speed
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21")
+
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
+obs <- Data_Engage_Quad_Carlsbad_Iron_Select %>% group_by(FittingId) %>% summarise(num = n()) 
+Data_Engage_Quad_Carlsbad_Iron_Select <- merge(Data_Engage_Quad_Carlsbad_Iron_Select, obs, by.x = c("FittingId"), by.y = c("FittingId")) 
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(num > 7) 
+
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1.2, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50) 
+
+sample.split(Data_Engage_Quad_Carlsbad_Iron_Select$ImpactHeadSpeedMph,SplitRatio = 0.80)->split_index
+train  <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==T)
+test <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==F)
+
+
+train <- within(train, {
+  FittingId <- factor(as.character(FittingId))
+  ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+test <- within(test, {
+  FittingId <- factor(as.character(FittingId))
+  ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+
+# mod_regress <-lmer(ImpactHeadSpeedMph ~
+#            # Fixed-effects
+#            1 + BallSpeedMph*BallLaunchAngleDeg*BallSideAngleDeg*BallBackSpinRpm*BallSideSpinRpm*ClubFamilyName +
+#            # Random-effects
+#            (1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm | FittingId), data = train)
+
+mod_regress <-lmer(ImpactHeadSpeedMph ~
+           # Fixed-effects
+           1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + ClubFamilyName + ImpactHorizLocInch + ImpactVertLocInch +
+           # Random-effects
+           (1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm | FittingId), data = train)
+
+
+# mod_regress <- randomForest(ImpactHeadSpeedMph  ~
+#                               BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + ClubFamilyName,
+#                             data = train, ntree=1000, importance=TRUE)
+
+#ggpredict(mod_regress)
+
+#unique(as.numeric(row.names(ranef(mod_regress)$FittingId)))
+
+result_regress <- predict(mod_regress,test, allow.new.levels = TRUE)
+
+
+Final_Data <- cbind(Actual=test$ImpactHeadSpeedMph,Predicted=result_regress)
+Final_Data <- as.data.frame(Final_Data)
+
+error <- (Final_Data$Actual- Final_Data$Predicted)
+Final_Data <- cbind(Final_Data,error)
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+
+#ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = SmashFactor)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+
+
+```
+
+## Neural Network example
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+set.seed(500)
+library(MASS)
+data <- Boston
+
+apply(data,2,function(x) sum(is.na(x)))
+
+index <- sample(1:nrow(data),round(0.75*nrow(data)))
+train <- data[index,]
+test <- data[-index,]
+lm.fit <- glm(medv~., data=train)
+summary(lm.fit)
+pr.lm <- predict(lm.fit,test)
+MSE.lm <- sum((pr.lm - test$medv)^2)/nrow(test)
+
+
+maxs <- apply(data, 2, max) 
+mins <- apply(data, 2, min)
+scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+train_ <- scaled[index,]
+test_ <- scaled[-index,]
+
+
+library(neuralnet)
+n <- names(train_)
+f <- as.formula(paste("medv ~", paste(n[!n %in% "medv"], collapse = " + ")))
+nn <- neuralnet(f,data=train_,hidden=c(5,3),linear.output=T)
+
+plot(nn)
+
+pr.nn <- compute(nn,test_[,1:13])
+pr.nn_ <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
+test.r <- (test_$medv)*(max(data$medv)-min(data$medv))+min(data$medv)
+MSE.nn <- sum((test.r - pr.nn_)^2)/nrow(test_)
+
+print(paste(MSE.lm,MSE.nn))
+
+par(mfrow=c(1,2))
+plot(test$medv,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend='NN',pch=18,col='red', bty='n')
+plot(test$medv,pr.lm,col='blue',main='Real vs predicted lm',pch=18, cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend='LM',pch=18,col='blue', bty='n', cex=.95)
+
+
+
+plot(test$medv,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
+points(test$medv,pr.lm,col='blue',pch=18,cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend=c('NN','LM'),pch=18,col=c('red','blue'))
+
+
+```
+# cross validation
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+
+library(boot)
+set.seed(200)
+lm.fit <- glm(medv~.,data=data)
+cv.glm(data,lm.fit,K=10)$delta[1]
+
+
+set.seed(450)
+cv.error <- NULL
+k <- 10
+library(plyr) 
+pbar <- create_progress_bar('text')
+pbar$init(k)
+for(i in 1:k){
+    index <- sample(1:nrow(data),round(0.9*nrow(data)))
+    train.cv <- scaled[index,]
+    test.cv <- scaled[-index,]
+    nn <- neuralnet(f,data=train.cv,hidden=c(5,2),linear.output=T)   
+    pr.nn <- compute(nn,test.cv[,1:13])
+    pr.nn <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)   
+    test.cv.r <- (test.cv$medv)*(max(data$medv)-min(data$medv))+min(data$medv)   
+    cv.error[i] <- sum((test.cv.r - pr.nn)^2)/nrow(test.cv)    
+    pbar$step()
+}
+
+mean(cv.error)
+cv.error
+
+boxplot(cv.error,xlab='MSE CV',col='cyan',
+        border='blue',names='CV error (MSE)',
+        main='CV error (MSE) for NN',horizontal=TRUE)
+
+```
+
+
+
+
+
+
+
+
 
 ```{r , echo=FALSE, include = TRUE, warning=FALSE}
 
-lm.Ball.Speed.normalize <-lmer(Ball.Speed ~
-           # Fixed-effects
-           1 + Model + Club.Speed.quad + Pitch + Length:Club.Speed.quad + Length:Pitch + Vertical.Face.quad + Lateral.Face.quad +
-             Model:Vertical.Face.quad + Model:Lateral.Face.quad + Model:I(Vertical.Face.quad^2) + Model:I(Lateral.Face.quad^2) +
-           # Random-effects
-           (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
+#library('tidyverse')
+library('neuralnet')
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21")
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1.2, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50)
+
+data <- Data_Engage_Quad_Carlsbad_Iron_Select %>% select(ImpactHeadSpeedMph, BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm)
+
+apply(data,2,function(x) sum(is.na(x)))
+
+index <- sample(1:nrow(data),round(0.75*nrow(data)))
+train <- data[index,]
+test <- data[-index,]
+lm.fit <- glm(ImpactHeadSpeedMph~., data=train)
+summary(lm.fit)
+pr.lm <- predict(lm.fit,test)
+MSE.lm <- sum((pr.lm - test$medv)^2)/nrow(test)
+
+maxs <- apply(data, 2, max) 
+mins <- apply(data, 2, min)
+scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+train_ <- scaled[index,]
+test_ <- scaled[-index,]
+
+n <- names(train_)
+f <- as.formula(paste("ImpactHeadSpeedMph ~", paste(n[!n %in% "ImpactHeadSpeedMph"], collapse = " + ")))
+nn <- neuralnet(f,data=train_,hidden=c(5,3),linear.output=T)
+
+plot(nn)
+
+pr.nn <- compute(nn,test_[,1:6])
+pr.nn_ <- pr.nn$net.result*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)
+test.r <- (test_$ImpactHeadSpeedMph)*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)
+MSE.nn <- sum((test.r - pr.nn_)^2)/nrow(test_)
+
+print(paste(MSE.lm,MSE.nn))
+
+par(mfrow=c(1,2))
+plot(test$ImpactHeadSpeedMph,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend='NN',pch=18,col='red', bty='n')
+plot(test$ImpactHeadSpeedMph,pr.lm,col='blue',main='Real vs predicted lm',pch=18, cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend='LM',pch=18,col='blue', bty='n', cex=.95)
+
+
+
+plot(test$ImpactHeadSpeedMph,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
+points(test$ImpactHeadSpeedMph,pr.lm,col='blue',pch=18,cex=0.7)
+abline(0,1,lwd=2)
+legend('bottomright',legend=c('NN','LM'),pch=18,col=c('red','blue'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+sample.split(Data_Engage_Quad_Carlsbad_Iron_Select$ImpactHeadSpeedMph,SplitRatio = 0.80)->split_index
+train  <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==T)
+test <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==F)
+
+train <- within(train, {
+  FittingId <- factor(as.character(FittingId))
+  ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+test <- within(test, {
+  FittingId <- factor(as.character(FittingId))
+  ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+summary(train)
+
+
+maxs <- apply(Data_Engage_Quad_Carlsbad_Iron_Select, 2, max) 
+mins <- apply(Data_Engage_Quad_Carlsbad_Iron_Select, 2, min)
+
+scaled <- as.data.frame(scale(Data_Engage_Quad_Carlsbad_Iron_Select, center = mins, scale = maxs - mins))
+
+
+
+
+
+#Trying stuff..
+
+
+model = neuralnet(
+    ImpactHeadSpeedMph ~ BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm,
+data=train,
+hidden=c(4,2),
+linear.output = FALSE
+)
+
+result_regress <- predict(model,test)
+
+
+Final_Data <- cbind(Actual=test$ImpactHeadSpeedMph,Predicted=result_regress)
+Final_Data <- as.data.frame(Final_Data)
+
+error <- (Final_Data$Actual- Final_Data$Predicted)
+Final_Data <- cbind(Final_Data,error)
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+
+
+
+
+plot(model,rep = "best")
+
+
+pred <- predict(model, test)
+prediction_label <- data.frame(max.col(pred)) %>% mutate(pred=max.col.pred.) %>%
+unlist()
+
+table(test, prediction_label)
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
