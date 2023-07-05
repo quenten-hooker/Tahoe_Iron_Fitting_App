@@ -44,7 +44,7 @@ urlcolor: blue
 # library('stringi')
 # library('fuzzyjoin')
 # library('stringdist')
-# library('reticulate')
+library('reticulate')
 # library('stringr')
 
 #pacman::p_load(ggplot2, dplyr, tidyr, ggpubr, sjPlot, kableExtra, sp, plotly, ggeffects, akima, lme4, stringr, reshape)
@@ -1332,23 +1332,41 @@ Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(Ca
 
 
 Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
+
 obs <- Data_Engage_Quad_Carlsbad_Iron_Select %>% group_by(FittingId) %>% summarise(num = n()) 
 Data_Engage_Quad_Carlsbad_Iron_Select <- merge(Data_Engage_Quad_Carlsbad_Iron_Select, obs, by.x = c("FittingId"), by.y = c("FittingId")) 
 Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(num > 7) 
 
 
-Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1.2, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50) 
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50)
+
+#apply(Data_Engage_Quad_Carlsbad_Iron_Select,2,function(x) sum(is.na(x)))
+
 
 sample.split(Data_Engage_Quad_Carlsbad_Iron_Select$ImpactHeadSpeedMph,SplitRatio = 0.80)->split_index
 train  <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==T)
 test <- subset(Data_Engage_Quad_Carlsbad_Iron_Select,split_index==F)
 
 
+Q_test_data <- data.frame(Ball.Speed.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Ball.Speed.quad)),
+                       Launch.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Launch.Angle.quad)),
+                       Side.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Angle.quad)),
+                       Back.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Back.Spin.quad)),
+                       Side.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Spin.quad)),
+                       Tags = rep(c("APEX MB 21"), each = 1),
+                       Player = rep("Quenten Hooker", each = 1))
+
+colnames(Q_test_data) <- c("BallSpeedMph", "BallLaunchAngleDeg", "BallSideAngleDeg", "BallBackSpinRpm", "BallSideSpinRpm", "ClubFamilyName", "FittingId")
+
 train <- within(train, {
   FittingId <- factor(as.character(FittingId))
   ClubFamilyName <- factor(as.character(ClubFamilyName))})
 
 test <- within(test, {
+  FittingId <- factor(as.character(FittingId))
+  ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+Q_test_data <- within(Q_test_data, {
   FittingId <- factor(as.character(FittingId))
   ClubFamilyName <- factor(as.character(ClubFamilyName))})
 
@@ -1361,10 +1379,17 @@ test <- within(test, {
 
 mod_regress <-lmer(ImpactHeadSpeedMph ~
            # Fixed-effects
-           1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + ClubFamilyName + ImpactHorizLocInch + ImpactVertLocInch +
+           1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + ClubFamilyName +
            # Random-effects
            (1 + BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm | FittingId), data = train)
 
+# saveRDS(mod_regress, file = "mem.rda")
+
+# mod_regress <-lmer(ImpactHeadSpeedMph ~
+#            # Fixed-effects
+#            1 + BallSpeedMph  +
+#            # Random-effects
+#            (1 + BallSpeedMph | FittingId), data = train)
 
 # mod_regress <- randomForest(ImpactHeadSpeedMph  ~
 #                               BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + ClubFamilyName,
@@ -1375,6 +1400,8 @@ mod_regress <-lmer(ImpactHeadSpeedMph ~
 #unique(as.numeric(row.names(ranef(mod_regress)$FittingId)))
 
 result_regress <- predict(mod_regress,test, allow.new.levels = TRUE)
+#result_regress
+predict(mod_regress,Q_test_data, allow.new.levels = TRUE)
 
 
 Final_Data <- cbind(Actual=test$ImpactHeadSpeedMph,Predicted=result_regress)
@@ -1388,114 +1415,17 @@ Final_Data <- Final_Data %>% na.omit()
 rmse1<-sqrt(mean(Final_Data$error^2))
 rmse1
 
-ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")
+MSE.mem <- sum((Final_Data$error)^2)/nrow(test)
+MSE.mem
 
-
-#ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = SmashFactor)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
-
-
-```
-
-## Neural Network example
-```{r , echo=FALSE, include = TRUE, warning=FALSE}
-set.seed(500)
-library(MASS)
-data <- Boston
-
-apply(data,2,function(x) sum(is.na(x)))
-
-index <- sample(1:nrow(data),round(0.75*nrow(data)))
-train <- data[index,]
-test <- data[-index,]
-lm.fit <- glm(medv~., data=train)
-summary(lm.fit)
-pr.lm <- predict(lm.fit,test)
-MSE.lm <- sum((pr.lm - test$medv)^2)/nrow(test)
-
-
-maxs <- apply(data, 2, max) 
-mins <- apply(data, 2, min)
-scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
-train_ <- scaled[index,]
-test_ <- scaled[-index,]
-
-
-library(neuralnet)
-n <- names(train_)
-f <- as.formula(paste("medv ~", paste(n[!n %in% "medv"], collapse = " + ")))
-nn <- neuralnet(f,data=train_,hidden=c(5,3),linear.output=T)
-
-plot(nn)
-
-pr.nn <- compute(nn,test_[,1:13])
-pr.nn_ <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
-test.r <- (test_$medv)*(max(data$medv)-min(data$medv))+min(data$medv)
-MSE.nn <- sum((test.r - pr.nn_)^2)/nrow(test_)
-
-print(paste(MSE.lm,MSE.nn))
-
-par(mfrow=c(1,2))
-plot(test$medv,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
-abline(0,1,lwd=2)
-legend('bottomright',legend='NN',pch=18,col='red', bty='n')
-plot(test$medv,pr.lm,col='blue',main='Real vs predicted lm',pch=18, cex=0.7)
-abline(0,1,lwd=2)
-legend('bottomright',legend='LM',pch=18,col='blue', bty='n', cex=.95)
-
-
-
-plot(test$medv,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
-points(test$medv,pr.lm,col='blue',pch=18,cex=0.7)
-abline(0,1,lwd=2)
-legend('bottomright',legend=c('NN','LM'),pch=18,col=c('red','blue'))
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm")+ annotate(geom="text", x=60, y=110, label= paste("MSE = ", round(MSE.mem, 2))) + annotate(geom="text", x=60, y=105, label= paste("RMSE = ", round(rmse1, 2)))
 
 
 ```
-# cross validation
-```{r , echo=FALSE, include = TRUE, warning=FALSE}
 
+# To do, restructure with above to test model vs mem
 
-library(boot)
-set.seed(200)
-lm.fit <- glm(medv~.,data=data)
-cv.glm(data,lm.fit,K=10)$delta[1]
-
-
-set.seed(450)
-cv.error <- NULL
-k <- 10
-library(plyr) 
-pbar <- create_progress_bar('text')
-pbar$init(k)
-for(i in 1:k){
-    index <- sample(1:nrow(data),round(0.9*nrow(data)))
-    train.cv <- scaled[index,]
-    test.cv <- scaled[-index,]
-    nn <- neuralnet(f,data=train.cv,hidden=c(5,2),linear.output=T)   
-    pr.nn <- compute(nn,test.cv[,1:13])
-    pr.nn <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)   
-    test.cv.r <- (test.cv$medv)*(max(data$medv)-min(data$medv))+min(data$medv)   
-    cv.error[i] <- sum((test.cv.r - pr.nn)^2)/nrow(test.cv)    
-    pbar$step()
-}
-
-mean(cv.error)
-cv.error
-
-boxplot(cv.error,xlab='MSE CV',col='cyan',
-        border='blue',names='CV error (MSE)',
-        main='CV error (MSE) for NN',horizontal=TRUE)
-
-```
-
-
-
-
-
-
-
-
-
+# NN for our inverse prediction problem using neuralnet package
 ```{r , echo=FALSE, include = TRUE, warning=FALSE}
 
 #library('tidyverse')
@@ -1503,12 +1433,28 @@ library('neuralnet')
 
 Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21")
 
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX TCB 21" ] <- "APEX_TCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX 21" ] <- "APEX_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX DCB 21" ] <- "APEX_DCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX PRO 21 IRONS" ] <- "APEX_PRO_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX MB 21" ] <- "APEX_MB_21"
+
 Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
 
-Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1.2, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50)
+ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = SmashFactor)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = ImpactHeadSpeedMph)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
 
-data <- Data_Engage_Quad_Carlsbad_Iron_Select %>% select(ImpactHeadSpeedMph, BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm)
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50)
 
+data <- Data_Engage_Quad_Carlsbad_Iron_Select %>% select(ClubFamilyName, ImpactHeadSpeedMph, BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm)
+
+data <- unique(data)
+
+#summary(data)
+
+data <- data %>% mutate(value = 1)  %>% spread(ClubFamilyName, value,  fill = 0)
+
+#check for NAs
 apply(data,2,function(x) sum(is.na(x)))
 
 index <- sample(1:nrow(data),round(0.75*nrow(data)))
@@ -1517,7 +1463,8 @@ test <- data[-index,]
 lm.fit <- glm(ImpactHeadSpeedMph~., data=train)
 summary(lm.fit)
 pr.lm <- predict(lm.fit,test)
-MSE.lm <- sum((pr.lm - test$medv)^2)/nrow(test)
+MSE.lm <- sum((pr.lm - test$ImpactHeadSpeedMph)^2)/nrow(test)
+rmse.lm <- sqrt(mean((pr.lm - test$ImpactHeadSpeedMph)^2))
 
 maxs <- apply(data, 2, max) 
 mins <- apply(data, 2, min)
@@ -1526,17 +1473,36 @@ train_ <- scaled[index,]
 test_ <- scaled[-index,]
 
 n <- names(train_)
-f <- as.formula(paste("ImpactHeadSpeedMph ~", paste(n[!n %in% "ImpactHeadSpeedMph"], collapse = " + ")))
-nn <- neuralnet(f,data=train_,hidden=c(5,3),linear.output=T)
+
+lhsOfFormula <- "ImpactHeadSpeedMph"
+rhsOfFormula  <- paste(n[!n %in% "ImpactHeadSpeedMph"])
+ns <- sapply(c(lhsOfFormula, rhsOfFormula), as.name)
+f <- formula(paste(ns[1], paste(ns[-1], collapse="+"), sep=" ~ "))
+
+#nn <- neuralnet(f,data=train_,hidden=c(5,3),linear.output=T)
+
+
+nn <- neuralnet(formula = f, data = train_, hidden = 4, threshold = 0.01,
+  stepmax = 1e+06, rep = 1, startweights = NULL,
+  #learningrate.limit = NULL,
+  #learningrate.factor = list(minus = 0.5,  plus = 1.2),
+  learningrate = NULL, lifesign = "minimal",
+  lifesign.step = 1000, algorithm = "rprop+", err.fct = "sse",
+  act.fct = "logistic", linear.output = TRUE, exclude = NULL,
+  constant.weights = NULL, likelihood = FALSE)
 
 plot(nn)
 
-pr.nn <- compute(nn,test_[,1:6])
+pr.nn <- compute(nn,test_[,1:11])
 pr.nn_ <- pr.nn$net.result*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)
 test.r <- (test_$ImpactHeadSpeedMph)*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)
 MSE.nn <- sum((test.r - pr.nn_)^2)/nrow(test_)
+rmse.nn <- sqrt(mean((test.r - pr.nn_)^2))
+
 
 print(paste(MSE.lm,MSE.nn))
+print(paste(rmse.lm,rmse.nn))
+
 
 par(mfrow=c(1,2))
 plot(test$ImpactHeadSpeedMph,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
@@ -1546,15 +1512,224 @@ plot(test$ImpactHeadSpeedMph,pr.lm,col='blue',main='Real vs predicted lm',pch=18
 abline(0,1,lwd=2)
 legend('bottomright',legend='LM',pch=18,col='blue', bty='n', cex=.95)
 
-
-
 plot(test$ImpactHeadSpeedMph,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7)
 points(test$ImpactHeadSpeedMph,pr.lm,col='blue',pch=18,cex=0.7)
 abline(0,1,lwd=2)
 legend('bottomright',legend=c('NN','LM'),pch=18,col=c('red','blue'))
 
 
+```
 
+# cross validation - Do not run
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+
+# library(boot)
+# set.seed(200)
+# lm.fit <- glm(ImpactHeadSpeedMph~.,data=data)
+# cv.glm(data,lm.fit,K=10)$delta[1]
+# 
+# 
+# set.seed(450)
+# cv.error <- NULL
+# k <- 10
+# library(plyr) 
+# pbar <- create_progress_bar('text')
+# pbar$init(k)
+# for(i in 1:k){
+#     index <- sample(1:nrow(data),round(0.9*nrow(data)))
+#     train.cv <- scaled[index,]
+#     test.cv <- scaled[-index,]
+#     nn <- neuralnet(f,data=train.cv,hidden=c(5,2),linear.output=T)   
+#     pr.nn <- compute(nn,test.cv[,1:13])
+#     pr.nn <- pr.nn$net.result*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)   
+#     test.cv.r <- (test.cv$ImpactHeadSpeedMph)*(max(data$ImpactHeadSpeedMph)-min(data$ImpactHeadSpeedMph))+min(data$ImpactHeadSpeedMph)   
+#     cv.error[i] <- sum((test.cv.r - pr.nn)^2)/nrow(test.cv)    
+#     pbar$step()
+# }
+# 
+# mean(cv.error)
+# cv.error
+# 
+# boxplot(cv.error,xlab='MSE CV',col='cyan',
+#         border='blue',names='CV error (MSE)',
+#         main='CV error (MSE) for NN',horizontal=TRUE)
+
+```
+
+# NN for our inverse prediction problem using neuralnet package
+```{r , echo=FALSE, include = TRUE, warning = TRUE}
+
+#library(quantmod) 
+#library(nnet)
+library('doMC')
+library('tensorflow')
+library('caret')
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21")
+
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX TCB 21" ] <- "APEX_TCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX 21" ] <- "APEX_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX DCB 21" ] <- "APEX_DCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX PRO 21 IRONS" ] <- "APEX_PRO_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX MB 21" ] <- "APEX_MB_21"
+
+# Data_Engage_Quad_Carlsbad_Iron_Select <- within(Data_Engage_Quad_Carlsbad_Iron_Select, {
+#   ClubFamilyName <- factor(as.character(ClubFamilyName))})
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
+
+ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = SmashFactor)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = ImpactHeadSpeedMph)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(SmashFactor > 1, ImpactHeadSpeedMph < 120, ImpactHeadSpeedMph > 50)
+
+data <- Data_Engage_Quad_Carlsbad_Iron_Select %>% select(ClubFamilyName, ImpactHeadSpeedMph, BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm)
+
+data <- unique(data)
+
+data <- data %>% mutate(value = 1)  %>% spread(ClubFamilyName, value,  fill = 0)
+
+inTrain <- createDataPartition(
+  y = data$ImpactHeadSpeedMph,
+  times = 1,
+  p = .80,
+  list = FALSE
+)
+
+training <- data[ inTrain,]
+testing  <- data[-inTrain,]
+Q_test_data <- data.frame(Ball.Speed.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Ball.Speed.quad)),
+                       Launch.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Launch.Angle.quad)),
+                       Side.Angle.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Angle.quad)),
+                       Back.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Back.Spin.quad)),
+                       Side.Spin.quad = Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Side.Spin.quad)),
+                       APEX_21 = 0,
+                       APEX_DCB_21 = 0,
+                       APEX_MB_21 = 1,
+                       APEX_PRO_21 = 0,
+                       APEX_TCB_21 = 0)
+
+
+colnames(Q_test_data) <- c("BallSpeedMph", "BallLaunchAngleDeg", "BallSideAngleDeg", "BallBackSpinRpm", "BallSideSpinRpm", "APEX_21", "APEX_DCB_21", "APEX_MB_21", "APEX_PRO_21", "APEX_TCB_21")
+
+#new test
+registerDoMC(cores=4)
+
+#models tried, xgbLinear, xgbtree, ols, mem, randforest, neuralnet
+
+tune.grid.neuralnet <- expand.grid(
+  layer1 = c(5:10), # first hidden layer, from 1 to 5 neurons
+  layer2 = c(0:5), # second hidden layer, from 0 to 5 neurons
+  layer3 = c(0:5)  # third hidden layer, from 0 to 5 neurons
+)
+
+system.time(model <- caret::train(ImpactHeadSpeedMph ~ ., data = training, method = "neuralnet",
+                                  preProcess = c("center", "scale"),
+                                  tuneGrid = tune.grid.neuralnet, #dataframe of tunning values
+                                  metric = "RMSE", #summary metric for selecting the optimal model
+                                  stepmax = 1000000, #maximum steps for the training
+                                  learningrate = 0.01, #amount that the weights are updated during training
+                                  threshold = 2,
+                                  # preProcess = list(center = c("ImpactHeadSpeedMph", "BallSpeedMph", "BallLaunchAngleDeg", "BallSideAngleDeg",
+                                  #                                 "BallBackSpinRpm", "BallSideSpinRpm"),
+                                  #                      scale = c("ImpactHeadSpeedMph", "BallSpeedMph", "BallLaunchAngleDeg", "BallSideAngleDeg",
+                                  #                                 "BallBackSpinRpm", "BallSideSpinRpm")),
+                                  #linout = TRUE,
+                                  trControl = trainControl(method = 'cv', number = 2)
+                                  ))
+
+#saveRDS(model, file = "nn_5_0_0.rda")
+
+#model1 <- readRDS(model, file = "nn_1_1.rda")
+
+plot(model)
+print(model)
+
+result_predict <- predict(model,testing)
+predict(model, Q_test_data)
+Data.Combined.7I %>% filter(Player == "Quenten Hooker") %>% summarise(mean(Club.Speed.quad))
+
+
+
+
+Final_Data <- cbind(Actual=testing$ImpactHeadSpeedMph,Predicted=result_predict)
+Final_Data <- as.data.frame(Final_Data)
+
+error <- (Final_Data$Actual- Final_Data$Predicted)
+Final_Data <- cbind(Final_Data,error)
+
+Final_Data <- Final_Data %>% na.omit()
+
+rmse1<-sqrt(mean(Final_Data$error^2))
+rmse1
+
+MSE.mem <- sum((Final_Data$error)^2)/nrow(testing)
+MSE.mem
+
+ggplot(Final_Data, aes(x = Actual, y = Predicted)) + geom_point() + geom_smooth(method = "lm") + annotate(geom="text", x=60, y=110, label= paste("MSE = ", round(MSE.mem, 2))) + annotate(geom="text", x=60, y=105, label= paste("RMSE = ", round(rmse1, 2)))
+
+
+```
+
+
+## appendix 
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+
+n <- names(training)
+
+lhsOfFormula <- "ImpactHeadSpeedMph"
+rhsOfFormula  <- paste(n[!n %in% "ImpactHeadSpeedMph"])
+ns <- sapply(c(lhsOfFormula, rhsOfFormula), as.name)
+f <- formula(paste(ns[1], paste(ns[-1], collapse="+"), sep=" ~ "))
+
+
+softplus <- function(x) log(1+exp(x)) #sigmoid activation function
+
+tune.grid.neuralnet <- expand.grid(
+  layer1 = c(4), # first hidden layer, from 1 to 5 neurons
+  layer2 = c(0), # second hidden layer, from 0 to 5 neurons
+  layer3 = c(0)  # third hidden layer, from 0 to 5 neurons
+)
+# 
+# nn2 <- train(f, #formula 
+#              training, # training dataset
+#              method = "neuralnet", #modelling approach 
+#              tuneGrid = tune.grid.neuralnet, #dataframe of tunning values 
+#              metric = "RMSE", #summary metric for selecting the optimal model
+#              stepmax = 100000, #maximum steps for the training
+#              learningrate = 0.01, #amount that the weights are updated during training
+#              threshold = 0.01, 
+#              act.fct = softplus, 
+#              trControl = trainControl (
+#                  method = "repeatedcv", # crossvalidation method
+#                  number  = 1,  # Number of folds of the cv
+#                  repeats = 1,  # Number of cv repetitions
+#                  p = 0.8,       # proportion of sample to be used as train set
+#                  verboseIter = TRUE,
+#                  savePredictions = TRUE,
+#                  allowParallel = TRUE))
+
+sapply(training, class) 
+str(f)
+warnings()
+nn2 <- caret::train(f, #formula 
+             training, # training dataset
+             method = "neuralnet", #modelling approach 
+             tuneGrid = tune.grid.neuralnet,
+             #trace = TRUE,
+             #linout = TRUE,
+             preProc = c("center", "scale")) #dataframe of tunning values 
+             #metric = "RMSE", #summary metric for selecting the optimal model
+             #stepmax = 100, #maximum steps for the training
+             #learningrate = 0.01, #amount that the weights are updated during training
+             #threshold = 0.01,
+             #act.fct = softplus, 
+             #trControl = ctrl)
+
+#method='neuralnet', linout=TRUE, trace = TRUE, preProc = c("center", "scale"), trControl = control)
 
 
 
