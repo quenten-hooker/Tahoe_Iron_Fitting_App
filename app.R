@@ -77,87 +77,20 @@ use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/pytho
 # library('stringdist')
 # library('png')
 
-# Player images
+#load swing TTB models
+lm.Club.Speed.quad <- readRDS(file = "mem_speed_TTB.rda")
+lm.Angle.Of.Attack.quad <- readRDS(file = "mem_attack_TTB.rda")
+lm.Pitch <- readRDS(file = "mem_pitch_TTB.rda")
 
-# Load player training data
-Data.Combined <- read.csv('Data_All_Filtered.csv')
+#load Tahoe OS and Tahoe HL LC models
+lm.Ball.Speed.normalize <- readRDS(file = "mem_bs_tahoe.rda")
+lm.Launch.Angle.normalize <- readRDS(file = "mem_la_tahoe.rda")
+lm.Back.Spin.normalize <- readRDS(file = "mem_backs_tahoe.rda")
+lm.Side.Angle.normalize <- readRDS(file = "mem_sa_tahoe.rda")
+lm.Side.Spin.normalize <- readRDS(file = "mem_sides_tahoe.rda")
 
-# Format data
-Data.Combined <- within(Data.Combined, {
-  Player <- factor(Player)
-  Club <- factor(Club)
-  Club.Speed.quad <- as.numeric(Club.Speed.quad)
-  Efficiency.quad <- as.numeric(Efficiency.quad)
-  Angle.Of.Attack.quad <- as.numeric(Angle.Of.Attack.quad)
-  Club.Path.quad <- as.numeric(Club.Path.quad)
-  Face.To.Target.quad <- as.numeric(Face.To.Target.quad)
-  Face.To.Path.quad <- as.numeric(Face.To.Path.quad)
-  Lie.quad <- as.numeric(Lie.quad)
-  Loft.quad <- as.numeric(Loft.quad)
-  Lateral.Face.quad <- as.numeric(Lateral.Face.quad)*-1
-  Vertical.Face.quad <- as.numeric(Vertical.Face.quad)
-})
-
-# Through the bag tendency models 
-lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
-                            # Fixed-effects
-                            1 + Length + I(Length^2) +
-                            # Random-effects
-                            (1 + Length + I(Length^2) | Player), data = Data.Combined)
-
-lm.Angle.Of.Attack.quad <-lmer(Angle.Of.Attack.quad ~
-                                 # Fixed-effects
-                                 1 + Length + I(Length^2) +
-                                 # Random-effects
-                                 (1 + Length + I(Length^2) | Player), data = Data.Combined)
-
-lm.Pitch <-lmer(Pitch ~
-                  # Fixed-effects
-                  1 + Length + I(Length^2) +
-                  # Random-effects
-                  (1 + Length + I(Length^2) | Player), data = Data.Combined)
-
-# Select club models of interest
-Data.Combined.train <- Data.Combined %>% filter(Model == "Tahoe Std" | Model == "Tahoe HL")
-
-# Refactor model for level pulling  
-Data.Combined.train <- within(Data.Combined.train, {
-  Model <- factor(as.character(Model))
-})
-
-# Launch condition models
-lm.Ball.Speed.normalize <-lmer(Ball.Speed.quad ~
-                                 # Fixed-effects
-                                 1 + Model + Club.Speed.quad + Pitch + Length:Club.Speed.quad + Length:Pitch + Vertical.Face.quad + Lateral.Face.quad +
-                                 Model:Vertical.Face.quad + Model:Lateral.Face.quad + Model:I(Vertical.Face.quad^2) + Model:I(Lateral.Face.quad^2) +
-                                 # Random-effects
-                                 (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
-
-lm.Launch.Angle.normalize <-lmer(Launch.Angle.quad ~
-                                   # Fixed-effects
-                                   1 + Model + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Length:Pitch + Vertical.Face.quad + 
-                                   Static.Loft:Club.Speed.quad + Static.Loft:Angle.Of.Attack.quad + Static.Loft:Pitch + Static.Loft:Vertical.Face.quad +
-                                   # Random-effects
-                                   (1 + Club.Speed.quad + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
-
-lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
-                                # Fixed-effects
-                                1 + Model:Length + Model:Static.Loft + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
-                                # Random-effects
-                                (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
-
-lm.Side.Angle.normalize <-lmer(Side.Angle.quad ~
-                                 # Fixed-effects
-                                 1 + Face.To.Target.quad + Lateral.Face.quad +
-                                 # Random-effects
-                                 (1 + Club.Speed.quad + Face.To.Target.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
-
-lm.Side.Spin.normalize <-lmer(Side.Spin.quad ~
-                                # Fixed-effects
-                                1 + Face.To.Path.quad + Lateral.Face.quad  +
-                                # Random-effects
-                                (1 + Face.To.Path.quad + Lateral.Face.quad | Player), data = Data.Combined.train)
-
+#load ball to swing inverse nn
+nn_inverse <- readRDS(file = "nn_8_0_final.rda")
 
 new_data_create <- function(speed, attack, lean) {
   
@@ -196,7 +129,7 @@ new_data <- data.frame(Player = rep("Population", nrow(Length.data)),
                        Club.Path.quad = 0,
                        Face.To.Path.quad = 0,
                        Pitch = predict(lm.Pitch, re.form= NA, newdata = Length.data) + player_pitch_dif,
-                       Lie.quad = rep(mean(na.omit(Data.Combined.train$Lie.quad)), 96),
+                       Lie.quad = rep(0, 96),
                        Lateral.Face.quad = rep(Lateral.Impact.GMM, 12),
                        Vertical.Face.quad = rep(Vertical.Impact.GMM, 12))
  return(new_data)
@@ -261,7 +194,7 @@ ui <- navbarPage(theme = shinytheme("darkly"),
   title = h4(strong("Tahoe Performance")),
   tabPanel(title = "Consumer",
            sidebarLayout(
-             sidebarPanel(h4(strong("7 Iron Club Delivery")),
+             sidebarPanel(h4(strong("7 Iron Club Delivery Inputs")),
              sliderInput("speed",
                          label = strong(HTML('&nbsp;'), "Swing Speed"),
                          min = 50, max = 110, step = 5, value = c(90), width = '390px'),
@@ -277,16 +210,23 @@ ui <- navbarPage(theme = shinytheme("darkly"),
          ))),
   tabPanel(title = "Fitter",
            sidebarLayout(
-             sidebarPanel(h4(strong("7 Iron launch Conditions")),
-                          sliderInput("ballspeed",
+             sidebarPanel(h4(strong("7 Iron Launch Condition Inputs")),
+                          selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB")),
+                          sliderInput("bs",
                                       label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
-                                      min = 50, max = 110, step = 5, value = c(90), width = '390px'),
-                          sliderInput("launch",
+                                      min = 80, max = 140, step = 5, value = c(90), width = '390px'),
+                          sliderInput("la",
                                       label = strong(HTML('&nbsp;'), "Launch Angle (deg)"),
-                                      min = 5, max = 20, step = 5, value = c(12), width = '390px'),
+                                      min = 5, max = 30, step = 5, value = c(12), width = '390px'),
                           sliderInput("backs",
                                       label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
                                       min = 3000, max = 9000, step = 500, value = c(7000), width = '390px'),
+                          sliderInput("sa",
+                                      label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
+                                      min = -5, max = 5, step = .5, value = c(0), width = '390px'),
+                          sliderInput("sides",
+                                      label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
+                                      min = -2000, max = 2000, step = 250, value = c(0), width = '390px'),
                           actionButton("predict", "Submit to predict")
                           ),
            mainPanel())
@@ -454,7 +394,7 @@ server <- function(input, output) {
     #ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
     #  geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
     
-    fig <- plot_ly(trajectory(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("black", "blue")) %>%
+    fig <- plot_ly(trajectory(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("red", "blue")) %>%
       layout(xaxis = list(title = 'Distance (yds)', showgrid = F, zeroline = F), 
              yaxis = list(title = '', showgrid = F, showticklabels = F))
     
