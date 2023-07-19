@@ -155,6 +155,11 @@ Data %>% group_by(Player) %>% summarise(n())
 
 Data %>% filter(Model == "Tahoe HL") %>% group_by(Club) %>% summarise(n())
 
+Data %>% group_by(Club) %>% filter_if(~is.numeric(.), all_vars(!is.infinite(.))) %>% summarise(Carry.quad = mean(na.omit(Carry.quad))) %>% arrange(desc(Carry.quad))
+
+#Data %>% group_by(Length) %>% filter_if(~is.numeric(.), all_vars(!is.infinite(.))) %>% summarise(Vertical.Face.quad = mean(na.omit(Vertical.Face.quad)), Club.Speed.quad = mean(na.omit(Club.Speed.quad)), Angle.Of.Attack.quad = mean(na.omit(Angle.Of.Attack.quad)), Loft.quad = mean(na.omit(Loft.quad - Static.Loft))) 
+
+
 ```
 
 #Creating length and static loft columns
@@ -291,17 +296,7 @@ Data.Combined <- Data.Combined %>% filter(Ball.Speed.quad > 50, Launch.Angle.qua
 
 ggplot(Data.Combined, aes(x = Length, y = Club.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
 
-ggplot(Data.Combined, aes(x = Length, y = Angle.Of.Attack.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
-
-ggplot(Data.Combined, aes(x = Length, y = Club.Path.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
-
-ggplot(Data.Combined, aes(x = Length, y = Pitch)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
-
-ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
-ggplot(Data.Combined, aes(x = Length, y = Launch.Angle.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
-ggplot(Data.Combined, aes(x = Length, y = Back.Spin.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
-
-#saveRDS(lm.Pitch, file = "MEM_Pitch_TTB.rda")
+ggplot(Data.Combined, aes(x = Length, y = Club.Speed.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
 
 lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
            # Fixed-effects
@@ -309,17 +304,84 @@ lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
            # Random-effects
            (1 + Length + I(Length^2) | Player), data = Data.Combined)
 
-lm.Angle.Of.Attack.quad <-lmer(Angle.Of.Attack.quad ~
+lm.Club.Speed.quad <-lm(Club.Speed.quad ~
+           # Fixed-effects
+            1 + Length + I(Length^2), data = Data.Combined %>% filter(Player == "Jonathan Sanders"))
+
+summary(lm.Club.Speed.quad)
+
+
+plot_model(lm.Club.Speed.quad, type = "pred", terms = c("Length[all]"), ci.lvl = NA, show.data = TRUE)+theme_sjplot()
+
+Data.Combined %>% group_by(Length) %>% summarise(mean(Vertical.Face.quad))
+
+
+Hunter Reed, Jonathan Sanders	
+
+
+saveRDS(lm.Club.Speed.quad, file = "mem_speed_TTB_test.rda")
+
+
+Length = c(35.5, 35.75, 36.0, 36.5, 37.0, 37.5, 38.0, 38.5)
+Club.Speed.quad = c(81, 83, 85, 87, 90, 92, 94, 96)
+Attack.quad = c()
+
+Data.test <- as.data.frame(cbind(Length, Club.Speed.quad))
+
+lm.Club.Speed.quad <-lm(Club.Speed.quad ~
+           # Fixed-effects
+            1 + Length + I(Length^2), data = Data.test)
+
+```
+
+
+
+
+```{r , echo=FALSE, include = TRUE, warning=FALSE}
+
+
+ggplot(Data.Combined, aes(x = Length, y = Angle.Of.Attack.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7))
+
+ggplot(Data.Combined, aes(x = Length, y = Club.Path.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+ggplot(Data.Combined, aes(x = Length, y = Pitch)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+ggplot(Data.Combined, aes(x = Length, y = Launch.Angle.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+ggplot(Data.Combined, aes(x = Length, y = Back.Spin.quad)) + geom_point(aes(color = Player)) + geom_smooth(aes(color = Player), method = "lm", formula = y ~ x + I(x^2), se=TRUE, level = .8, linetype = 1)+ theme_classic() + theme(legend.key.size = unit(.5, 'cm'), legend.key.width= unit(.1, 'cm'), legend.text = element_text(size=7)) 
+
+
+ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
+ggplot(Data.Combined, aes(x = Length, y = Ball.Speed.quad)) + geom_point() + geom_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3) + I(x^4) + I(x^5), se=TRUE, level = .8, linetype = 1)
+
+ggplot(Data.Combined, aes(x = Length, y = Launch.Angle.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
+ggplot(Data.Combined, aes(x = Length, y = Back.Spin.quad)) + geom_point() + geom_smooth(method = 'loess', formula = 'y~x') 
+
+#saveRDS(lm.Club.Speed.quad, file = "mem_speed_TTB_test.rda")
+
+#saveRDS(lm.Pitch, file = "mem_pitch_TTB_test.rda")
+
+#saveRDS(lm.Angle.Of.Attack.quad, file = "mem_attack_TTB_test.rda")
+
+lm.Club.Speed.quad <-lmer(Club.Speed.quad ~
            # Fixed-effects
            1 + Length + I(Length^2) +
            # Random-effects
-           (1 + Length + I(Length^2) | Player), data = Data.Combined)
+           (1 + Length | Player), data = Data.Combined)
+
+lm.Angle.Of.Attack.quad <-lmer(Angle.Of.Attack.quad ~
+           # Fixed-effects
+           1 + Length +
+           # Random-effects
+           (1 + Length  | Player), data = Data.Combined)
 
 lm.Pitch <-lmer(Pitch ~
            # Fixed-effects
-           1 + Length + I(Length^2) +
+           1 + Length  +
            # Random-effects
-           (1 + Length + I(Length^2) | Player), data = Data.Combined)
+           (1 + Length  | Player), data = Data.Combined)
 
 lm.Ball.Speed.quad <-lmer(Ball.Speed.quad ~
            # Fixed-effects
@@ -405,6 +467,15 @@ mean(na.omit(Data.Combined.train$Lie.quad))
 ## Ball Speed Evaluation
 ```{r , echo=FALSE, include = TRUE, warning=FALSE, , message = FALSE}
 
+lm.Ball.Speed.normalize <-lmer(Ball.Speed.quad ~
+           # Fixed-effects
+           1 + Model + Club.Speed.quad + Pitch + Length:Club.Speed.quad + Length:Pitch + Vertical.Face.quad + Lateral.Face.quad +
+             Model:Vertical.Face.quad + Model:Lateral.Face.quad + Model:I(Vertical.Face.quad^2) + Model:I(Lateral.Face.quad^2) +
+           # Random-effects
+           (1 + Club.Speed.quad + Pitch + Vertical.Face.quad + Lateral.Face.quad| Player), data = Data.Combined.train)
+
+ggpredict(lm.Ball.Speed.normalize)
+
 summary(lm.Ball.Speed.normalize)
 
 plot_model(lm.Ball.Speed.normalize, type = "pred", terms = c("Club.Speed.quad", "Length", "Model"), show.data = TRUE)+theme_sjplot()+theme_classic()
@@ -461,9 +532,19 @@ plot_model(lm.Launch.Angle.normalize, type = "pred", terms = c("Vertical.Face.qu
 
 lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
                                 # Fixed-effects
-                                1 + Model:Length + Static.Loft + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
+                                1 + Model:Length + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad + Club.Speed.quad +
                                 # Random-effects
                                 (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+lm.Back.Spin.normalize <-lmer(Back.Spin.quad ~
+           # Fixed-effects
+           1 + Model + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad +
+             + Length:Vertical.Face.quad + Static.Loft:Club.Speed.quad + Static.Loft:Vertical.Face.quad +
+           # Random-effects
+           (1 + Angle.Of.Attack.quad + Pitch + Vertical.Face.quad| Player), data = Data.Combined.train)
+
+saveRDS(lm.Back.Spin.normalize, file = "mem_backs_tahoe_test.rda")
+
 
 ggpredict(lm.Back.Spin.normalize)
 
@@ -1352,7 +1433,7 @@ Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons") %>% group_by(ClubF
 ```{r , echo=FALSE, include = TRUE, warning=FALSE}
 
 #select correct clubs
-Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21")
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21" | ClubFamilyName == "PARADYM IRONS" | ClubFamilyName == "PARADYM X IRONS")
 
 #rename clubs
 Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX TCB 21" ] <- "APEX_TCB_21"
@@ -1360,6 +1441,9 @@ Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_I
 Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX DCB 21" ] <- "APEX_DCB_21"
 Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX PRO 21 IRONS" ] <- "APEX_PRO_21"
 Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX MB 21" ] <- "APEX_MB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "PARADYM IRONS" ] <- "PARADYM_23"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "PARADYM X IRONS" ] <- "PARADYM_X_23"
+
 
 
 Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph)) 
@@ -1573,6 +1657,8 @@ Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %
 #plot to check outliers
 ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = SmashFactor)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
 ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = ImpactHeadSpeedMph)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = ImpactVertLocInch)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
+
 ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = BallSpeedMph)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
 ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = BallLaunchAngleDeg)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
 ggplot(Data_Engage_Quad_Carlsbad_Iron_Select, aes(x = BallSideAngleDeg)) + geom_histogram(aes(y = ..density..), colour = 1, fill = "white") +  geom_density()
@@ -2340,6 +2426,270 @@ ggplot(unscaled_ECPC, aes(x = test_ImpactAttackAngleDeg, y = pred_ImpactAttackAn
 ggplot(unscaled_ECPC, aes(x = test_ImpactPitchAngleDeg, y = pred_ImpactPitchAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse_ECPC$rmse_ImpactPitchAngleDeg, 2)), 0.1, .95) 
 
 ```
+
+
+# NN multiple outputs - including more outputs
+```{r , echo=FALSE, include = TRUE, warning = TRUE}
+
+#library(quantmod) 
+library('nnet')
+library('doMC')
+library('tensorflow')
+library('caret')
+library('NeuralNetTools')
+library('neuralnet')
+
+#set generator for consistency
+set.seed(1234)
+
+#select correct clubs
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons", ClubFamilyName == "APEX TCB 21" | ClubFamilyName == "APEX 21" | ClubFamilyName == "APEX DCB 21" | ClubFamilyName == "APEX PRO 21 IRONS" | ClubFamilyName == "APEX MB 21" | ClubFamilyName == "PARADYM IRONS" | ClubFamilyName == "PARADYM X IRONS")
+
+#rename clubs
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX TCB 21" ] <- "APEX_TCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX 21" ] <- "APEX_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX DCB 21" ] <- "APEX_DCB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX PRO 21 IRONS" ] <- "APEX_PRO_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "APEX MB 21" ] <- "APEX_MB_21"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "PARADYM IRONS" ] <- "PARADYM_23"
+Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName[Data_Engage_Quad_Carlsbad_Iron_Select$ClubFamilyName == "PARADYM X IRONS" ] <- "PARADYM_X_23"
+
+#remove NA
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(!is.na(ClubFamilyName), !is.na(ImpactHeadSpeedMph), !is.na(ImpactAttackAngleDeg), !is.na(ImpactPitchAngleDeg)) 
+
+#remove bounds of distribution 
+Data_Engage_Quad_Carlsbad_Iron_Select <- Data_Engage_Quad_Carlsbad_Iron_Select %>% filter(
+  SmashFactor < mean(SmashFactor) + 2*sd(SmashFactor), SmashFactor > mean(SmashFactor) - 2*sd(SmashFactor),
+  ImpactHeadSpeedMph < mean(ImpactHeadSpeedMph) + 2*sd(ImpactHeadSpeedMph), ImpactHeadSpeedMph > mean(ImpactHeadSpeedMph) - 2*sd(ImpactHeadSpeedMph),
+  ImpactAttackAngleDeg < mean(ImpactAttackAngleDeg) + 2*sd(ImpactAttackAngleDeg), ImpactAttackAngleDeg > mean(ImpactAttackAngleDeg) - 2*sd(ImpactAttackAngleDeg),
+  ImpactPitchAngleDeg < mean(ImpactPitchAngleDeg) + 2*sd(ImpactPitchAngleDeg), ImpactPitchAngleDeg > mean(ImpactPitchAngleDeg) - 2*sd(ImpactPitchAngleDeg),
+  ImpactYawAngleDeg < mean(ImpactYawAngleDeg) + 2*sd(ImpactYawAngleDeg), ImpactYawAngleDeg > mean(ImpactYawAngleDeg) - 2*sd(ImpactYawAngleDeg),
+  ImpactPathAngleDeg < mean(ImpactPathAngleDeg) + 2*sd(ImpactPathAngleDeg), ImpactPathAngleDeg > mean(ImpactPathAngleDeg) - 2*sd(ImpactPathAngleDeg),
+  ImpactHorizLocInch < mean(ImpactHorizLocInch) + 2*sd(ImpactHorizLocInch), ImpactHorizLocInch > mean(ImpactHorizLocInch) - 2*sd(ImpactHorizLocInch),
+  ImpactVertLocInch < mean(ImpactVertLocInch) + 2*sd(ImpactVertLocInch), ImpactVertLocInch > mean(ImpactVertLocInch) - 2*sd(ImpactVertLocInch),
+  BallSpeedMph < mean(BallSpeedMph) + 2*sd(BallSpeedMph), BallSpeedMph > mean(BallSpeedMph) - 2*sd(BallSpeedMph),
+  BallLaunchAngleDeg < mean(BallLaunchAngleDeg) + 2*sd(BallLaunchAngleDeg), BallLaunchAngleDeg > mean(BallLaunchAngleDeg) - 2*sd(BallLaunchAngleDeg),
+  BallSideAngleDeg < mean(BallSideAngleDeg) + 2*sd(BallSideAngleDeg), BallSideAngleDeg > mean(BallSideAngleDeg) - 2*sd(BallSideAngleDeg),
+  BallBackSpinRpm < mean(BallBackSpinRpm) + 2*sd(BallBackSpinRpm), BallBackSpinRpm > mean(BallBackSpinRpm) - 2*sd(BallBackSpinRpm),
+  BallSideSpinRpm < mean(BallSideSpinRpm) + 2*sd(BallSideSpinRpm), BallSideSpinRpm > mean(BallSideSpinRpm) - 2*sd(BallSideSpinRpm))
+
+# 
+# SmashFactor < 1.4, ImpactHeadSpeedMph < 110, ImpactHeadSpeedMph > 50, ImpactAttackAngleDeg < 2, ImpactAttackAngleDeg > -10, ImpactPitchAngleDeg < 45, ImpactPitchAngleDeg > 10, BallSpeedMph < 140, BallSpeedMph > 70, BallLaunchAngleDeg > 5, BallLaunchAngleDeg < 30, BallSideAngleDeg < 5, BallSideAngleDeg > -5, BallBackSpinRpm > 2000, BallBackSpinRpm < 9000, BallSideSpinRpm < 2000, BallSideSpinRpm > -2000)
+
+#select features for training
+data <- Data_Engage_Quad_Carlsbad_Iron_Select %>% select(ClubFamilyName, ImpactHeadSpeedMph, ImpactAttackAngleDeg, ImpactPitchAngleDeg, ImpactYawAngleDeg, ImpactPathAngleDeg, ImpactHorizLocInch, ImpactVertLocInch, BallSpeedMph, BallLaunchAngleDeg, BallSideAngleDeg, BallBackSpinRpm, BallSideSpinRpm)
+
+#unique features
+data <- unique(data)
+
+#dummy code for neural net
+data <- data %>% mutate(value = 1)  %>% spread(ClubFamilyName, value,  fill = 0)
+
+#check for NAs
+apply(data,2,function(x) sum(is.na(x)))
+
+#separate train and test
+index <- sample(1:nrow(data),round(0.80*nrow(data)))
+train <- data[index,]
+test <- data[-index,]
+
+#parameters for scaling/normalizing data
+maxs <- apply(data, 2, max) 
+mins <- apply(data, 2, min)
+means <- apply(data[,1:12], 2, mean)
+sds <- apply(data[,1:12], 2, sd)
+
+#scaling to 0 to 1
+#scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+
+#scaling to mean = 0 and sd = 1
+scaled <- as.data.frame(cbind(scale(data[,1:12], center = means, scale = sds), data[,13:19]))
+
+train_ <- scaled[index,]
+test_ <- scaled[-index,]
+
+results_combined <- c()
+
+#optional loop through defined net grid
+for (i in 5:10) {
+  
+  #for(j in 1:5){
+    
+    #for(k in 1:5){
+  
+system.time(model <- neuralnet(ImpactHeadSpeedMph + ImpactAttackAngleDeg + ImpactPitchAngleDeg + ImpactYawAngleDeg + ImpactPathAngleDeg ~ BallSpeedMph + BallLaunchAngleDeg + BallSideAngleDeg + BallBackSpinRpm + BallSideSpinRpm + APEX_21 + APEX_DCB_21 + APEX_MB_21 + APEX_PRO_21 + APEX_TCB_21, #inputs and outputs
+                data = train_, #train data
+                hidden = c(8), #neuralnet grid
+                threshold = .75, # threshold for the partial derivatives of the error function as stopping criteria
+                stepmax = 1e+06, #the maximum steps for the training of the neural network
+                rep = 1, #neuralnet training repetitions
+                startweights = NULL, #starting weights, null is random
+                #learningrate.limit = NULL, #lowest and highest limit for the learning rate
+                #learningrate.factor = list(minus = 0.5,  plus = 1.2), #multiplication factors for the upper and lower learning rate
+                learningrate = NULL, #learning rate used by traditional backpropagation
+                lifesign = "full", #how much the function will print during the calculation of the neural network
+                lifesign.step = 1000, #stepsize to print the minimal threshold in full lifesign mode
+                algorithm = "rprop+", #algorithm type to calculate the neural network.
+                err.fct = "sse", #function that is used for the calculation of the error
+                act.fct = "logistic", #activation function to be applied to neuron weights
+                linear.output = TRUE, #regression or classification problem
+                exclude = NULL, # exclude any specific weights?
+                constant.weights = NULL, # values of the weights that are excluded
+                likelihood = FALSE #error function is equal to the negative log-likelihood function
+                ))
+  
+saveRDS(model, file = "nn_12_8_5_paradym.rda")
+#model <- readRDS(file = "nn_8_0_final.rda")
+#plot(model)
+#plotnet(model, pad_x = .5)
+
+#predictions for test set
+pr.nn <- compute(model,test_)
+
+#organize actual vs. predictions
+results <- data.frame(test_$ImpactHeadSpeedMph, test_$ImpactAttackAngleDeg, test_$ImpactPitchAngleDeg , test_$ImpactYawAngleDeg , test_$ImpactPathAngleDeg, pr.nn$net.result[,1], pr.nn$net.result[,2], pr.nn$net.result[,3], pr.nn$net.result[,4], pr.nn$net.result[,5])
+colnames(results) <- c("test_ImpactHeadSpeedMph", "test_ImpactAttackAngleDeg", "test_ImpactPitchAngleDeg", "test_ImpactYawAngleDeg", "test_ImpactPathAngleDeg", "pred_ImpactHeadSpeedMph", "pred_ImpactAttackAngleDeg", "pred_ImpactPitchAngleDeg" , "pred_ImpactYawAngleDeg" , "pred_ImpactPathAngleDeg")
+
+#unscaling to 0 to 1
+# unscaled <- data.frame(test_ImpactHeadSpeedMph = results$test_ImpactHeadSpeedMph * abs(diff(range(data$ImpactHeadSpeedMph))) + min(data$ImpactHeadSpeedMph),
+#                        test_ImpactAttackAngleDeg = results$test_ImpactAttackAngleDeg * abs(diff(range(data$ImpactAttackAngleDeg))) + min(data$ImpactAttackAngleDeg),
+#                        test_ImpactPitchAngleDeg = results$test_ImpactPitchAngleDeg * abs(diff(range(data$ImpactPitchAngleDeg))) + min(data$ImpactPitchAngleDeg),
+#                        pred_ImpactHeadSpeedMph = results$pred_ImpactHeadSpeedMph * abs(diff(range(data$ImpactHeadSpeedMph))) + min(data$ImpactHeadSpeedMph),
+#                        pred_ImpactAttackAngleDeg = results$pred_ImpactAttackAngleDeg * abs(diff(range(data$ImpactAttackAngleDeg))) + min(data$ImpactAttackAngleDeg),
+#                        pred_ImpactPitchAngleDeg = results$pred_ImpactPitchAngleDeg * abs(diff(range(data$ImpactPitchAngleDeg))) + min(data$ImpactPitchAngleDeg))
+
+#unscaling to mean = 0 and sd = 1
+unscaled <- data.frame(test_ImpactHeadSpeedMph = results$test_ImpactHeadSpeedMph * sds[['ImpactHeadSpeedMph']] + means[['ImpactHeadSpeedMph']],
+                       test_ImpactAttackAngleDeg = results$test_ImpactAttackAngleDeg * sds[['ImpactAttackAngleDeg']] + means[['ImpactAttackAngleDeg']],
+                       test_ImpactPitchAngleDeg = results$test_ImpactPitchAngleDeg * sds[['ImpactPitchAngleDeg']] + means[['ImpactPitchAngleDeg']],
+                       test_ImpactYawAngleDeg = results$test_ImpactYawAngleDeg * sds[['ImpactYawAngleDeg']] + means[['ImpactYawAngleDeg']],
+                       test_ImpactPathAngleDeg = results$test_ImpactPathAngleDeg * sds[['ImpactPathAngleDeg']] + means[['ImpactPathAngleDeg']],
+                       pred_ImpactHeadSpeedMph = results$pred_ImpactHeadSpeedMph * sds[['ImpactHeadSpeedMph']] + means[['ImpactHeadSpeedMph']],
+                       pred_ImpactAttackAngleDeg = results$pred_ImpactAttackAngleDeg * sds[['ImpactAttackAngleDeg']] + means[['ImpactAttackAngleDeg']],
+                       pred_ImpactPitchAngleDeg = results$pred_ImpactPitchAngleDeg * sds[['ImpactPitchAngleDeg']] + means[['ImpactPitchAngleDeg']],
+                       pred_ImpactYawAngleDeg = results$pred_ImpactYawAngleDeg * sds[['ImpactYawAngleDeg']] + means[['ImpactYawAngleDeg']],
+                       pred_ImpactPathAngleDeg = results$pred_ImpactPathAngleDeg * sds[['ImpactPathAngleDeg']] + means[['ImpactPathAngleDeg']])
+
+#error of unscaled results
+unscaled <- unscaled %>% mutate(error_ImpactHeadSpeedMph = test_ImpactHeadSpeedMph - pred_ImpactHeadSpeedMph,
+                                error_ImpactAttackAngleDeg = test_ImpactAttackAngleDeg - pred_ImpactAttackAngleDeg,
+                                error_ImpactPitchAngleDeg = test_ImpactPitchAngleDeg - pred_ImpactPitchAngleDeg,
+                                error_ImpactYawAngleDeg = test_ImpactYawAngleDeg - pred_ImpactYawAngleDeg,
+                                error_ImpactPathAngleDeg = test_ImpactPathAngleDeg - pred_ImpactPathAngleDeg)
+
+#root mean squared error of unscaled 
+rmse <- unscaled %>% summarise(rmse_ImpactHeadSpeedMph = sqrt(mean(error_ImpactHeadSpeedMph^2)),
+                               rmse_ImpactAttackAngleDeg = sqrt(mean(error_ImpactAttackAngleDeg^2)),
+                               rmse_ImpactPitchAngleDeg = sqrt(mean(error_ImpactPitchAngleDeg^2)),
+                               rmse_ImpactYawAngleDeg = sqrt(mean(error_ImpactYawAngleDeg^2)),
+                               rmse_ImpactPathAngleDeg = sqrt(mean(error_ImpactPathAngleDeg^2)))
+
+#store results
+results <- cbind(layer_one_neuron = i, rmse)
+results_combined <- rbind(results_combined, results)
+
+#}
+#}
+}
+
+#results_combined1<- results_combined
+#results_combined2<- results_combined
+
+
+#print
+
+# saveRDS(model, file = "nn_8_0_test.rda")
+
+#8 and 8, 3 are performing the best at first scaling 0 to 1
+#8, 5 are performing best with mean center and sd scaling
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning = TRUE}
+
+annotate_npc <- function(label, x, y, ...)
+{
+  ggplot2::annotation_custom(grid::textGrob(
+    x = unit(x, "npc"), y = unit(y, "npc"), label = label, ...))
+}
+
+ggplot(unscaled, aes(x = test_ImpactHeadSpeedMph, y = pred_ImpactHeadSpeedMph)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse$rmse_ImpactHeadSpeedMph, 2)), 0.1, .95) + xlim(50,110) + ylim(50,110)
+
+ggplot(unscaled, aes(x = test_ImpactAttackAngleDeg, y = pred_ImpactAttackAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse$rmse_ImpactAttackAngleDeg, 2)), 0.1, .95)  + xlim(-15,10) + ylim(-15,10)
+
+ggplot(unscaled, aes(x = test_ImpactPitchAngleDeg, y = pred_ImpactPitchAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse$rmse_ImpactPitchAngleDeg, 2)), 0.1, .95) + xlim(10,50) + ylim(10,50)
+
+ggplot(unscaled, aes(x = test_ImpactYawAngleDeg, y = pred_ImpactYawAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse$rmse_ImpactPitchAngleDeg, 2)), 0.1, .95) + xlim(-10,15) + ylim(-10,15)
+
+ggplot(unscaled, aes(x = test_ImpactPathAngleDeg, y = pred_ImpactPathAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse$rmse_ImpactPitchAngleDeg, 2)), 0.1, .95) 
+
+```
+
+```{r , echo=FALSE, include = TRUE, warning = TRUE}
+
+#ECPC test sample 
+ECPC <- Data.Combined.7I %>% filter(Tags == "MB21" | Tags == "TCB") %>% group_by(Player, Tags) %>% summarise(Club.Speed.quad = mean(na.omit(Club.Speed.quad)), Angle.Of.Attack.quad = mean(na.omit(Angle.Of.Attack.quad)), Loft.quad = mean(na.omit(Loft.quad)), Face.To.Target.quad = mean(na.omit(Face.To.Target.quad)), Club.Path.quad = mean(na.omit(Club.Path.quad)), Lateral.Face.quad = mean(na.omit(Lateral.Face.quad)), Vertical.Face.quad = mean(na.omit(Vertical.Face.quad)), Ball.Speed.quad = mean(na.omit(Ball.Speed.quad)), Launch.Angle.quad = mean(na.omit(Launch.Angle.quad)), Side.Angle.quad = mean(na.omit(Side.Angle.quad)), Back.Spin.quad = mean(na.omit(Back.Spin.quad)),  Side.Spin.quad = mean(na.omit(Side.Spin.quad)))
+
+#remove NA
+ECPC <- ECPC %>% filter(!is.na(Club.Speed.quad), !is.na(Angle.Of.Attack.quad), !is.na(Loft.quad)) 
+
+ECPC$Tags[ECPC$Tags == "MB21" ] <- "APEX_MB_21"
+ECPC$Tags[ECPC$Tags == "TCB" ] <- "APEX_TCB_21"
+
+colnames(ECPC) <- c("Player", "ClubFamilyName","ImpactHeadSpeedMph", "ImpactAttackAngleDeg", "ImpactPitchAngleDeg" , "ImpactYawAngleDeg", "ImpactPathAngleDeg", "ImpactHorizLocInch", "ImpactVertLocInch", "BallSpeedMph", "BallLaunchAngleDeg", "BallSideAngleDeg", "BallBackSpinRpm", "BallSideSpinRpm")
+
+ECPC <- ECPC %>% mutate(value = 1)  %>% spread(ClubFamilyName, value,  fill = 0)
+
+#parameters for scaling/normalizing data
+maxs <- apply(data, 2, max) 
+mins <- apply(data, 2, min)
+means <- apply(data[,1:12], 2, mean)
+sds <- apply(data[,1:12], 2, sd)
+
+#scaling to 0 to 1
+#scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+
+#scaling to mean = 0 and sd = 1
+scaled <- as.data.frame(cbind(scale(ECPC[,2:13], center = means, scale = sds), ECPC[,14:15], APEX_21 = 0, APEX_DCB_21 = 0, APEX_PRO_21 = 0))
+scaled_input <- scaled %>% select(-ImpactHeadSpeedMph, -ImpactAttackAngleDeg, -ImpactPitchAngleDeg, -ImpactYawAngleDeg, -ImpactPathAngleDeg, -ImpactHorizLocInch, -ImpactVertLocInch)
+
+#predictions for test set
+pr.nn <- compute(model,scaled_input)
+
+#organize actual vs. predictions
+results <- data.frame(scaled$ImpactHeadSpeedMph, scaled$ImpactAttackAngleDeg, scaled$ImpactPitchAngleDeg, pr.nn$net.result[,1], pr.nn$net.result[,2], pr.nn$net.result[,3])
+colnames(results) <- c("test_ImpactHeadSpeedMph", "test_ImpactAttackAngleDeg", "test_ImpactPitchAngleDeg", "pred_ImpactHeadSpeedMph", "pred_ImpactAttackAngleDeg", "pred_ImpactPitchAngleDeg")
+
+#unscaling to mean = 0 and sd = 1
+unscaled_ECPC <- data.frame(test_ImpactHeadSpeedMph = results$test_ImpactHeadSpeedMph * sds[['ImpactHeadSpeedMph']] + means[['ImpactHeadSpeedMph']],
+                       test_ImpactAttackAngleDeg = results$test_ImpactAttackAngleDeg * sds[['ImpactAttackAngleDeg']] + means[['ImpactAttackAngleDeg']],
+                       test_ImpactPitchAngleDeg = results$test_ImpactPitchAngleDeg * sds[['ImpactPitchAngleDeg']] + means[['ImpactPitchAngleDeg']],
+                       pred_ImpactHeadSpeedMph = results$pred_ImpactHeadSpeedMph * sds[['ImpactHeadSpeedMph']] + means[['ImpactHeadSpeedMph']],
+                       pred_ImpactAttackAngleDeg = results$pred_ImpactAttackAngleDeg * sds[['ImpactAttackAngleDeg']] + means[['ImpactAttackAngleDeg']],
+                       pred_ImpactPitchAngleDeg = results$pred_ImpactPitchAngleDeg * sds[['ImpactPitchAngleDeg']] + means[['ImpactPitchAngleDeg']])
+
+#error of unscaled results
+unscaled_ECPC <- unscaled_ECPC %>% mutate(error_ImpactHeadSpeedMph = test_ImpactHeadSpeedMph - pred_ImpactHeadSpeedMph,
+                                error_ImpactAttackAngleDeg = test_ImpactAttackAngleDeg - pred_ImpactAttackAngleDeg,
+                                error_ImpactPitchAngleDeg = test_ImpactPitchAngleDeg - pred_ImpactPitchAngleDeg)
+
+
+#root mean squared error of unscaled 
+rmse_ECPC <- unscaled_ECPC %>% summarise(rmse_ImpactHeadSpeedMph = sqrt(mean(error_ImpactHeadSpeedMph^2)),
+                               rmse_ImpactAttackAngleDeg = sqrt(mean(error_ImpactAttackAngleDeg^2)),
+                               rmse_ImpactPitchAngleDeg = sqrt(mean(error_ImpactPitchAngleDeg^2)))
+
+#store results
+results_ECPC <- cbind(layer_one_neuron = 8, rmse_ECPC)
+
+ggplot(unscaled_ECPC, aes(x = test_ImpactHeadSpeedMph, y = pred_ImpactHeadSpeedMph)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse_ECPC$rmse_ImpactHeadSpeedMph, 2)), 0.1, .95) 
+
+ggplot(unscaled_ECPC, aes(x = test_ImpactAttackAngleDeg, y = pred_ImpactAttackAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse_ECPC$rmse_ImpactAttackAngleDeg, 2)), 0.1, .95)  
+
+ggplot(unscaled_ECPC, aes(x = test_ImpactPitchAngleDeg, y = pred_ImpactPitchAngleDeg)) + geom_point() + geom_smooth(method = "lm") + annotate_npc(paste("RSME = ", round(rmse_ECPC$rmse_ImpactPitchAngleDeg, 2)), 0.1, .95) 
+
+```
+
 
 
 ## Auto ML using H20
