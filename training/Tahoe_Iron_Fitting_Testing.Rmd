@@ -690,7 +690,7 @@ aero_data <- predict_data %>% select("speed-mph", "back_spin-rpm", "launch_angle
 ```{r , echo=FALSE, include = TRUE, warning=FALSE}
 
 library(reticulate)
-use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+#use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 
 ```
 
@@ -939,7 +939,7 @@ ggplot(predict_trajectory, aes(x = X.yards, y = Z.yards*3, color = Model, shape 
 
 # Sim test for distance from opening for randy
 ```{r , echo=FALSE, include = TRUE, warning=FALSE}
-use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+#use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 source_python('python_ref.py')
 
 

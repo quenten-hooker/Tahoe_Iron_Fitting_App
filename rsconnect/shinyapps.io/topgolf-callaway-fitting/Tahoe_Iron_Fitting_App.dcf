@@ -1,0 +1,14 @@
+name: Tahoe_Iron_Fitting_App
+title: Tahoe_Iron_Fitting_App
+username:
+account: topgolf-callaway-fitting
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9486295
+bundleId: 7480610
+url: https://topgolf-callaway-fitting.shinyapps.io/Tahoe_Iron_Fitting_App/
+when: 1689894541.5978
+lastSyncTime: 1689894541.59785
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: training
