@@ -1388,6 +1388,8 @@ ggplot(predict, aes(x = Club.Speed.quad)) + geom_histogram(aes(y = ..density..),
 library('odbc')
 library('DBI')
 library('dplyr')
+library('stringr')
+
 
 ```
 
@@ -1419,6 +1421,8 @@ Data.Engage <- DBI::dbGetQuery(con,
 Data.Engage %>% group_by(MonitorTypeName) %>% summarise(n())
 Data.Engage %>% group_by(Location) %>% summarise(n())
 
+Data.Engage %>% 
+
 Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad') %>% group_by(AccountFullName) %>% summarise(n())
 
 Data_Engage_Quad_Carlsbad <- Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad')
@@ -1426,6 +1430,18 @@ Data_Engage_Quad_Carlsbad <- Data.Engage %>% filter(EventName == 'Callaway Perfo
 Data_Engage_Quad_Carlsbad %>% group_by(FittingId) %>% summarise(num = n()) %>% arrange(desc(num))
 
 Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons") %>% group_by(ClubFamilyName) %>% summarise(num = n()) %>% arrange(desc(num))
+
+
+Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2") %>% filter(CategoryName == "Woods") %>% filter(str_detect(ClubFamilyName, fixed(c("driver"), ignore_case=TRUE))) %>% group_by(Location) %>% summarise(n())
+
+Data.sum <- Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2") %>% filter(CategoryName == "Woods") %>% filter(str_detect(ClubFamilyName, fixed(c("driver"), ignore_case=TRUE))) %>% group_by(FittingId) %>% summarise(obs = n(), Mean.Head.Speed = mean(na.omit(ImpactHeadSpeedMph)))
+
+quantile(na.omit(Data.sum$Mean.Head.Speed), probs = .90)
+
+
+my_binwidth <- 50
+
+ggplot(Data.sum %>% filter(Mean.Head.Speed > 20, Mean.Head.Speed < 140), aes(x = Mean.Head.Speed)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density.. * 40000), color = "red", adjust = 2) + scale_x_continuous(limits = c(0, 150)) + xlab("Player Average Head Speed (mph)") + ylab("Player Count (n)")+ geom_vline(xintercept=quantile(na.omit(Data.sum$Mean.Head.Speed), probs = .90), color = "blue") + annotate("text", label = "90th percentile = 106.3mph", x = 30, y = 1200, size = unit(5, "pt"))
 
 ```
 
@@ -2695,9 +2711,9 @@ ggplot(unscaled_ECPC, aes(x = test_ImpactPitchAngleDeg, y = pred_ImpactPitchAngl
 ## Auto ML using H20
 ```{r , echo=FALSE, include = TRUE, warning = TRUE}
 
-library(h2o)
-library(dplyr)
-library(ggplot2)
+#library(h2o)
+#library(dplyr)
+#library(ggplot2)
 h2o.init()
 
 

@@ -2,7 +2,7 @@
 library("ggplot2")
 library('tidyr')
 library("dplyr")
-library("reticulate")
+#library("reticulate")
 library('lme4')
 library('DT')
 library('ggeffects')
@@ -11,12 +11,25 @@ library('shinyWidgets')
 library('shinythemes')
 library('plotly')
 library('neuralnet')
-#use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+library("devtools")
 
-source_python('python_ref.py')
+#use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+#pip install downrange --index-url https://pkgs.dev.azure.com/cgcRDClusterComputing/_packaging/callaway/pypi/simple/
+
+virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+
+# Create virtual env and install dependencies
+reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
+reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
+reticulate::py_install("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/Lib/site-packages/AeroCodePython",  envname = virtualenv_dir)
+reticulate::use_virtualenv(virtualenv_dir, required = T)
+
+PYTHON_DEPENDENCIES = c('pip', 'numpy')
 
 server <- function(input, output) {
   
+  #pull in python functions
+  reticulate::source_python('python_ref.py')
   
   #Consumer page functions
   swing_input_df <- reactive({
@@ -292,8 +305,8 @@ server <- function(input, output) {
     traj_X_data$Club[traj_X_data$name == "V4" | traj_X_data$name == "V12"] <- "7"
     traj_X_data$Club[traj_X_data$name == "V5" | traj_X_data$name == "V13"] <- "8"
     traj_X_data$Club[traj_X_data$name == "V6" | traj_X_data$name == "V14"] <- "9"
-    traj_X_data$Club[traj_X_data$name == "V7" | traj_X_data$name == "V15"] <- "PW"
-    traj_X_data$Club[traj_X_data$name == "V8" | traj_X_data$name == "V16"] <- "AW"
+    traj_X_data$Club[traj_X_data$name == "V7" | traj_X_data$name == "V15"] <- "AW"
+    traj_X_data$Club[traj_X_data$name == "V8" | traj_X_data$name == "V16"] <- "PW"
     
     traj_Z_data <- aero_data[["Z yards"]]
     traj_Z_data <- as.data.frame(do.call(cbind, traj_Z_data))
@@ -308,6 +321,10 @@ server <- function(input, output) {
                        X.yards = traj_X_data$value,
                        Z.yards = traj_Z_data$value,
                        Y.yards = traj_Y_data$value)
+    
+    Traj <- Traj %>% arrange(factor(Club, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW")))
+    
+    print(Traj %>% filter(Club == "PW" | Club == "AW"))
     
     return(Traj) 
   })
@@ -366,7 +383,9 @@ server <- function(input, output) {
                  bgcolor = "black"
     )
     
-    Data <- unique(as.data.frame(trajectory_test()))
+    print(apply(unique(trajectory_test()), 2, rev))
+    
+    #Data$Model <- factor(Data$Model, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW"))
     #print(Data %>% filter(Club == "4" | Club == "6", Model == "Tahoe HL"))
     
     #Data %>% group_by(Model, Club) %>% arrange(desc(X.Yards))
@@ -391,7 +410,9 @@ server <- function(input, output) {
                               font = list(color = "white")),
                             borderwidth = 5,
                             font = list(
-                              color = "white")
+                              color = "white"),
+                            traceorder = "grouped"
+                            #orientation = 'h'
                           )
     )
     

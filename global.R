@@ -9,8 +9,6 @@
 # 2) check all models 
 # 3) random crashes?
 # 3) dynamically change length and loft?
-# 3) save models?
-# 4) Change UI
 # 5) How to deploy with aero?
 
 # toggle of inputs generic vs. detailed
@@ -36,7 +34,7 @@
 library("ggplot2")
 library('tidyr')
 library("dplyr")
-library("reticulate")
+#library("reticulate")
 library('lme4')
 library('DT')
 library('ggeffects')
@@ -45,7 +43,7 @@ library('shinyWidgets')
 library('shinythemes')
 library('plotly')
 library('neuralnet')
-use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
+#use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 # library("tidyr")
 # library("ggpubr")
 # library("ggforce")

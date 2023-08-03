@@ -1,13 +1,12 @@
 from typing import List
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import scipy as scipy
+#import matplotlib.pyplot as plt
+#import seaborn as sns
+#import scipy as scipy
 import downrange.downrange as downrange
-
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+#import warnings
+#warnings.simplefilter(action='ignore', category=FutureWarning)
 
 environment = {
         'env_temp_F':  75, #[deg F]
@@ -49,43 +48,9 @@ def defaultdownrange(df: pd.DataFrame,LaunchColumnnames: List[str] = ['Ballspeed
     return predictionshots
   
   
-# def testAero(aero_data):
-#   
-#   #py_aero_predict = r.aero_data
-#   py_aero_predict = aero_data
-#   test = []
-#      
-#   # for k, row in py_aero_predict.iterrows():
-#   #    results = demo.predictdownrange(row)
-#   #    test.append(results)      
-#   #    
-#   #    trajectory, results = zip(*test)
-#   #  
-#   #    df = pd.DataFrame(results)
-#   #    df2 = pd.DataFrame(trajectory)
-#   
-#   return py_aero_predict
-
-
 def aerotest(aero_data): 
     
     data = defaultdownrange(aero_data) 
-    #data = data["carrydist", "carrydisp"]
-    #print(data)
-    
-    # #py_aero_predict = r.aero_data
-    # py_aero_predict = aero_data
-    # 
-    # test = []
-    # for k, row in py_aero_predict.iterrows():
-    #   results = demo.predictdownrange(row)
-    #   test.append(results)
-    # 
-    # trajectory, results = zip(*test)
-    # 
-    # data = pd.DataFrame(results)
-    # print(data)
-    # data2 = pd.DataFrame(trajectory)
 
     return data
 
