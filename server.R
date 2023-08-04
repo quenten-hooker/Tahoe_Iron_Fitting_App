@@ -16,9 +16,11 @@ library("devtools")
 #use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 #pip install downrange --index-url https://pkgs.dev.azure.com/cgcRDClusterComputing/_packaging/callaway/pypi/simple/
 
-virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
 
 # --- this works 
+#virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+
+
 # # Create virtual env and install dependencies
 # reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
 # reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
@@ -28,13 +30,24 @@ virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
 # reticulate::use_virtualenv(virtualenv_dir, required = T)
 # -- above works 
 
-# -- trying stuff, works too
-reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
-reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
+
+# # -- trying stuff, works too
+# reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
+# reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
+# reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
+# reticulate::use_virtualenv(virtualenv_dir, required = T)
+# # -- above works too
+
+PYTHON_DEPENDENCIES = c('pip', 'numpy')
+
+virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
+python_path = Sys.getenv('PYTHON_PATH')
+
+# Create virtual env and install dependencies
+reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+reticulate::virtualenv_install(virtualenv_dir, packages =  PYTHON_DEPENDENCIES, ignore_installed=TRUE)
 reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
 reticulate::use_virtualenv(virtualenv_dir, required = T)
-
-#PYTHON_DEPENDENCIES = c('pip', 'numpy')
 
 server <- function(input, output) {
   

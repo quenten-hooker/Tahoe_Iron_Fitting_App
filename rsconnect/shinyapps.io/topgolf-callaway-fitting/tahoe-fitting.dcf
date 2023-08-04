@@ -1,0 +1,14 @@
+name: tahoe-fitting
+title: tahoe-fitting
+username:
+account: topgolf-callaway-fitting
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9556320
+bundleId: 7532737
+url: https://topgolf-callaway-fitting.shinyapps.io/tahoe-fitting/
+when: 1691172951.61936
+lastSyncTime: 1691172951.61939
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: sandbox/app.R|training
