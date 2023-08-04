@@ -18,13 +18,23 @@ library("devtools")
 
 virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
 
-# Create virtual env and install dependencies
+# --- this works 
+# # Create virtual env and install dependencies
+# reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
+# reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
+# reticulate::virtualenv_install("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/Lib/site-packages/AeroCodePython",  envname = virtualenv_dir)
+# #config <- reticulate::py_config()
+# #system2(config$python, c("-m", "pip", "install", "--quiet", shQuote("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/Lib/site-packages/AeroCodePython")))
+# reticulate::use_virtualenv(virtualenv_dir, required = T)
+# -- above works 
+
+# -- trying stuff, works too
 reticulate::virtualenv_create(envname = virtualenv_dir, python = NULL)
 reticulate::virtualenv_install(virtualenv_dir, packages = c('pip', 'numpy'), ignore_installed=TRUE)
-reticulate::py_install("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/Lib/site-packages/AeroCodePython",  envname = virtualenv_dir)
+reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
 reticulate::use_virtualenv(virtualenv_dir, required = T)
 
-PYTHON_DEPENDENCIES = c('pip', 'numpy')
+#PYTHON_DEPENDENCIES = c('pip', 'numpy')
 
 server <- function(input, output) {
   

@@ -1,0 +1,3 @@
+--extra-index-url=https://callaway:ltyyd7darxvoo2vfgetkyv57vo5uuzfyzcamrmssgni673wlrdbq@pkgs.dev.azure.com/cgcRDClusterComputing/_packaging/callaway/pypi/simple/
+--trusted-host=pkgs.dev.azure.com
+downrange

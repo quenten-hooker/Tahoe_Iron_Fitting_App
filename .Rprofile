@@ -12,7 +12,12 @@ if (Sys.info()[['user']] == 'shiny'){
   Sys.setenv(PYTHON_PATH = 'python3')
   Sys.setenv(VIRTUALENV_NAME = VIRTUALENV_NAME) # Installs into default shiny virtualenvs dir
   Sys.setenv(RETICULATE_PYTHON = paste0('/home/shiny/.virtualenvs/', VIRTUALENV_NAME, '/bin/python'))
-
+  reticulate::use_virtualenv("/cloud/project/python3_env/", required = TRUE)
+  
+  #Sys.setenv(RETICULATE_PYTHON = "~/.virtualenvs/python35_env/bin/python")
+  
+  
+  
 } else if (Sys.info()[['user']] == 'rstudio-connect'){
 
   # Running on remote server
