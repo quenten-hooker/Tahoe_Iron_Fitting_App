@@ -54,6 +54,59 @@ server <- function(input, output) {
   #pull in python functions
   reticulate::source_python('python_ref.py')
   
+  output$monitor <- renderUI({
+    if (input$Monitortype == "Foresight") {
+      div(
+        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
+        selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
+        sliderInput("bs",
+                    label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
+                    min = 80, max = 140, step = 5, value = c(120), width = '390px'),
+        sliderInput("la",
+                    label = strong(HTML('&nbsp;'), "Launch Angle (deg)"),
+                    min = 5, max = 30, step = 1, value = c(16), width = '390px'),
+        sliderInput("sa",
+                    label = strong(HTML('&nbsp;'), "Side Angle (deg)"),
+                    min = -5, max = 5, step = .5, value = c(0), width = '390px'),
+        sliderInput("backs",
+                    label = strong(HTML('&nbsp;'), "Backspin (rpm)"),
+                    min = 4000, max = 9000, step = 500, value = c(7000), width = '390px'),
+        sliderInput("sides",
+                    label = strong(HTML('&nbsp;'), "Sidespin (rpm)"),
+                    min = -2000, max = 2000, step = 250, value = c(0), width = '390px'),
+        #actionButton("predict2", "Submit to predict 7i trajectory"),
+        actionButton("predict3", "Predict Trajectories"),
+        plotlyOutput("plottrajectory_gamer"),
+        width = 5
+      )
+      }
+    else {
+      div(
+        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
+        selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
+        sliderInput("bs",
+                    label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
+                    min = 80, max = 140, step = 5, value = c(120), width = '390px'),
+        sliderInput("la",
+                    label = strong(HTML('&nbsp;'), "Launch Angle (deg)"),
+                    min = 5, max = 30, step = 1, value = c(16), width = '390px'),
+        sliderInput("sa",
+                    label = strong(HTML('&nbsp;'), "Side Angle (deg)"),
+                    min = -5, max = 5, step = .5, value = c(0), width = '390px'),
+        sliderInput("srt",
+                    label = strong(HTML('&nbsp;'), "Spin Rate (rpm)"),
+                    min = 4000, max = 9000, step = 500, value = c(7000), width = '390px'),
+        sliderInput("sax",
+                    label = strong(HTML('&nbsp;'), "Spin Axis (deg)"),
+                    min = -10, max = 10, step = 1, value = c(0), width = '390px'),
+        #actionButton("predict2", "Submit to predict 7i trajectory"),
+        actionButton("predict4", "Predict Trajectories"),
+        plotlyOutput("plottrajectory_gamer"),
+        width = 5
+      )
+    }})
+  
+  
   #Consumer page functions
   swing_input_df <- reactive({
     
