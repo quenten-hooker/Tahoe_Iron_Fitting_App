@@ -22,23 +22,7 @@ library('neuralnet')
 # Define UI ----
 ui <- navbarPage(theme = shinytheme("darkly"),
                  title = h4(strong("Tahoe Performance")),
-                 tabPanel(title = "Consumer",
-                          sidebarLayout(
-                            sidebarPanel(h4(strong("7 Iron Club Delivery Inputs")),
-                                         sliderInput("speed",
-                                                     label = strong(HTML('&nbsp;'), "Swing Speed"),
-                                                     min = 50, max = 110, step = 5, value = c(90), width = '390px'),
-                                         selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
-                                         selectInput("pitch", "Shaft pitch", choices = c("Forward", "Neutral")),
-                                         actionButton("predict", "Submit to predict"),
-                                         width = 5
-                            ),
-                            mainPanel( 
-                              plotlyOutput("plottrajectory"),
-                              dataTableOutput("carrytable"),
-                              width = 7
-                            ))),
-                 tabPanel(title = "Fitter",
+                 tabPanel(title = "Launch Condition Input",
                           sidebarLayout(
                             sidebarPanel(h4(strong("7 Iron Launch Condition Inputs")),
                                          selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
@@ -69,5 +53,21 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                               width = 7
                               #plotlyOutput('plottrajectory_new'),
                               #dataTableOutput("carrytable_new"),
+                            ))),
+                 tabPanel(title = "Swing Input",
+                          sidebarLayout(
+                            sidebarPanel(h4(strong("7 Iron Club Delivery Inputs")),
+                                         sliderInput("speed",
+                                                     label = strong(HTML('&nbsp;'), "Swing Speed"),
+                                                     min = 50, max = 110, step = 5, value = c(90), width = '390px'),
+                                         selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
+                                         selectInput("pitch", "Shaft pitch", choices = c("Forward", "Neutral")),
+                                         actionButton("predict", "Submit to predict"),
+                                         width = 5
+                            ),
+                            mainPanel( 
+                              plotlyOutput("plottrajectory", height = '500px'),
+                              dataTableOutput("carrytable"),
+                              width = 7
                             )))
 )

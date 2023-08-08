@@ -38,15 +38,15 @@ library("devtools")
 # reticulate::use_virtualenv(virtualenv_dir, required = T)
 # # -- above works too
 
-PYTHON_DEPENDENCIES = c('pip', 'numpy')
-
+# PYTHON_DEPENDENCIES = c('pip', 'numpy')
+# 
 virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-python_path = Sys.getenv('PYTHON_PATH')
-
-# Create virtual env and install dependencies
-reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-reticulate::virtualenv_install(virtualenv_dir, packages =  PYTHON_DEPENDENCIES, ignore_installed=TRUE)
-reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
+# python_path = Sys.getenv('PYTHON_PATH')
+# 
+# # Create virtual env and install dependencies
+# reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+# reticulate::virtualenv_install(virtualenv_dir, packages =  PYTHON_DEPENDENCIES, ignore_installed=TRUE)
+# reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
 reticulate::use_virtualenv(virtualenv_dir, required = T)
 
 server <- function(input, output) {
@@ -155,38 +155,47 @@ server <- function(input, output) {
   #Plots/Tables
   output$plottrajectory <- renderPlotly({
     
-    axx <- list(
-      title = "Distance (yds)"
+    scene = list(camera = list(eye = list(x = -1.85, y = 3.95, z = 1), center =  list(x = -.5, y = 0, z = 0)),
+                 aspectmode = "manual", aspectratio = list(x=5,y=1,z=1),
+                 #aspectratio = list(x = 10),
+                 xaxis = list(nticks = 10, title = "Distance (yds)", range = c(0, 250), color = "white"),
+                 yaxis = list(tickvals = as.list(seq(-10, 10, 10)), ticktext = as.list(c(-10, "", 10)), range = c(max(trajectory()$Y.yards) + 10,min(trajectory()$Y.yards)  -10), title = "Dispersion (yds)", color = "white", x = 1),
+                 zaxis = list(tickvals = as.list(seq(0, 50, 50)), ticktext = as.list(c("", 50)), title = "Height (yds)", range = c(0, 50), color = "white"),
+                 bgcolor = "black"
     )
     
-    axy <- list(
-      nticks = 3,
-      range = c(-10,10),
-      title = "Dispersion (yds)"
-    )
+    #print(apply(unique(trajectory()), 2, rev))
     
-    axz <- list(
-      title = "Height (ft)"
-    )
+    #Data$Model <- factor(Data$Model, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW"))
+    #print(Data %>% filter(Club == "4" | Club == "6", Model == "Tahoe HL"))
     
-    Data <- as.data.frame(trajectory())
+    #Data %>% group_by(Model, Club) %>% arrange(desc(X.Yards))
     #print(range(Data$X.yards))
     #ggplot(NULL, aes(x = X.yards, y = Z.yards*3, color = Model, shape = Club)) +
     #  geom_point(data = trajectory()) + xlab("Distance (yds)") + ylab("Height (ft)") + theme_classic(base_size = 18)
     
-    fig <- plot_ly(trajectory(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("red", "blue")) %>%
-      layout(xaxis = list(title = 'Distance (yds)', showgrid = F, zeroline = F, range = c(0, 250)), 
-             yaxis = list(title = '', showgrid = F, showticklabels = F, range = c(0, 66.66)))
+    #fig <- plot_ly(trajectory_7i(), x = ~X.yards, y = ~Z.yards, color = ~Model, type = 'scatter', mode = 'lines', colors = c("red")) %>%
+    #  layout(xaxis = list(title = 'Distance (yds)', showgrid = F, zeroline = T), 
+    #         yaxis = list(title = 'Height (yds', showgrid = F, showticklabels = T))
     
-    fig <- fig %>% add_lines(y = 0, x = range(Data$X.yards), line = list(color = "black", width = 2), inherit = FALSE, showlegend = FALSE)
+    #fig <- fig %>% add_lines(y = 0, x = range(Data$X.yards), line = list(color = "black", width = 2), inherit = FALSE, showlegend = FALSE)
     
-    #fig <- plot_ly(trajectory(), x = ~X.yards)
-    #fig <- fig %>% add_trace(y = ~Z.yards, name = 'test',mode = 'lines') 
+    fig <- plot_ly(unique(trajectory()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred", "blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
+                   line = list(width = 3))
     
-    
-    # layout(showlegend = FALSE,
-    #        yaxis = list(showline= T, linewidth=2, linecolor='black', showticklabels = F)
-    #layout(scene = list(xaxis=axx,yaxis=axz))
+    fig <- fig %>% layout(scene = scene, 
+                          paper_bgcolor = "black", 
+                          legend = list(
+                            title = list(
+                              text = "<b>Club Model</b>",
+                              font = list(color = "white")),
+                            borderwidth = 5,
+                            font = list(
+                              color = "white"),
+                            traceorder = "grouped"
+                            #orientation = 'h'
+                          )
+    )
     
   })
   
@@ -202,21 +211,22 @@ server <- function(input, output) {
     model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
     colnames(swing_data) <- model_col_names
     aero_data <- aerotest(swing_data)
-    downrange_data <- aero_data %>% select(carrydisp, carrydist)
-    final_data <- cbind(swing_data, downrange_data)
-    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% arrange(desc(Carry_Distance)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
-    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% arrange(desc(Carry_Distance)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
     
-    final_data <- cbind(final_data.1[2:4], final_data.2[3:4])
-    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Gapping (yds)", "Carry Distance (yds)", "Gapping (yds)")
+    downrange_data <- aero_data %>% select(carrydisp, carrydist, apexZft, landingangle)
+    final_data <- cbind(swing_data, downrange_data)
+    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    
+    final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
+    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
     
     sketch = htmltools::withTags(table(
       class = 'display',
       thead(
         tr(
           th(colspan = 1, ''),
-          th(class = 'dt-center', colspan = 2, 'Tahoe HL'),
-          th(class = 'dt-center', colspan = 2, 'Tahoe Std')
+          th(class = 'dt-center', colspan = 3, 'Tahoe HL'),
+          th(class = 'dt-center', colspan = 3, 'Tahoe Std')
         ),
         tr(
           lapply(colnames(final_data), th)
@@ -495,21 +505,21 @@ server <- function(input, output) {
     model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
     colnames(swing_data) <- model_col_names
     aero_data <- aerotest(swing_data)
-    downrange_data <- aero_data %>% select(carrydisp, carrydist)
+    downrange_data <- aero_data %>% select(carrydisp, carrydist, apexZft, landingangle)
     final_data <- cbind(swing_data, downrange_data)
-    final_data.1 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% arrange(desc(Carry_Distance)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
-    final_data.2 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0)) %>% arrange(desc(Carry_Distance)) %>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
     
-    final_data <- cbind(final_data.1[2:4], final_data.2[3:4])
-    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Gapping (yds)", "Carry Distance (yds)", "Gapping (yds)")
+    final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
+    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
     
     sketch = htmltools::withTags(table(
       class = 'display',
       thead(
         tr(
           th(colspan = 1, ''),
-          th(class = 'dt-center', colspan = 2, 'Tahoe Std'),
-          th(class = 'dt-center', colspan = 2, 'Tahoe HL')
+          th(class = 'dt-center', colspan = 3, 'Tahoe Std'),
+          th(class = 'dt-center', colspan = 3, 'Tahoe HL')
         ),
         tr(
           lapply(colnames(final_data), th)
