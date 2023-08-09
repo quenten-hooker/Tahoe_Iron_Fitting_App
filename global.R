@@ -90,7 +90,6 @@ lm.Pitch <- readRDS(file = "mem_pitch_TTB.rda")
 lm.Ball.Speed.normalize <- readRDS(file = "mem_bs_tahoe.rda")
 lm.Launch.Angle.normalize <- readRDS(file = "mem_la_tahoe.rda")
 lm.Back.Spin.normalize <- readRDS(file = "mem_backs_tahoe.rda")
-print(lm.Back.Spin.normalize)
 lm.Side.Angle.normalize <- readRDS(file = "mem_sa_tahoe.rda")
 lm.Side.Spin.normalize <- readRDS(file = "mem_sides_tahoe.rda")
 
@@ -111,7 +110,7 @@ swing_data_predict <- function(speed, attack, pitch) {
   
   # Define Player intercept for 6 iron, needs to be changed to a 7 iron
   player_speed_dif <- (speed - ggpredict(lm.Club.Speed.quad, terms = "Length[37]")$predicted)
-  print(player_speed_dif)
+  #print(player_speed_dif)
   player_attack_dif <- (attack - ggpredict(lm.Angle.Of.Attack.quad, terms = "Length[37]")$predicted)
   player_pitch_dif <- (pitch - ggpredict(lm.Pitch, terms = "Length[37]")$predicted)
   
@@ -183,7 +182,7 @@ predict_tahoe_lc <- function(new_data, bs, la, backs, sa, sides) {
   
 }
 
-inverse_predict <- function(model, bs, la, backs, sa, sides) {
+inverse_predict <- function(MonitorType, model, bs, la, backs, sa, sides, srt, sax) {
   
   
   if (model == "Apex MB 21"){
@@ -256,12 +255,24 @@ inverse_predict <- function(model, bs, la, backs, sa, sides) {
                            PARADYM_X_23 = 1)
   }
   
+  if (MonitorType == "Foresight"){
+    
   predict_data = data.frame(BallSpeedMph = as.numeric(bs),
                             BallLaunchAngleDeg =  as.numeric(la),
                             BallSideAngleDeg =  as.numeric(sa),
                             BallBackSpinRpm =  as.numeric(backs),
-                            BallSideSpinRpm =  as.numeric(sides))
+                            BallSideSpinRpm =  as.numeric(sides))}
   
+  else {
+  
+  predict_data = data.frame(BallSpeedMph = as.numeric(bs),
+                            BallLaunchAngleDeg =  as.numeric(la),
+                            BallSideAngleDeg =  as.numeric(sa),
+                            BallBackSpinRpm =  as.numeric(srt)*cos(((as.numeric(sax))*pi)/180),
+                            BallSideSpinRpm =  as.numeric(srt)*sin(((as.numeric(sax))*pi)/180))}
+  
+  
+  print(predict_data)
   
   sds = data.frame(ImpactHeadSpeedMph = 8.4454662,
                    ImpactAttackAngleDeg = 2.5436867,
@@ -304,7 +315,7 @@ inverse_predict <- function(model, bs, la, backs, sa, sides) {
                               pred_ImpactPathAngleDeg = results$pred_ImpactPathAngleDeg * sds[['ImpactPathAngleDeg']] + means[['ImpactPathAngleDeg']]
   )
   
-  print(unscaled_ECPC)
+  #print(unscaled_ECPC)
   return(unscaled_ECPC)
   
 }  
@@ -354,7 +365,7 @@ swing_data_predict_2 <- function(unscaled_ECPC) {
                          Lateral.Face.quad = rep(Lateral.Impact.GMM, 16),
                          Vertical.Face.quad = rep(rep(Vertical.Impact.GMM, each = 8), 2))
   
-  print(new_data %>% group_by(Model, Length) %>% summarise(mean(Club.Speed.quad), mean(Angle.Of.Attack.quad),mean(Pitch), mean(Vertical.Face.quad), ))
+  #print(new_data %>% group_by(Model, Length) %>% summarise(mean(Club.Speed.quad), mean(Angle.Of.Attack.quad),mean(Pitch), mean(Vertical.Face.quad), ))
   
   #print(new_data)
   return(new_data)

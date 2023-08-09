@@ -58,7 +58,7 @@ server <- function(input, output) {
     if (input$Monitortype == "Foresight") {
       div(
         selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
-        selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
+        #selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
         sliderInput("bs",
                     label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
                     min = 80, max = 140, step = 5, value = c(120), width = '390px'),
@@ -83,7 +83,7 @@ server <- function(input, output) {
     else {
       div(
         selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
-        selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
+        #selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
         sliderInput("bs",
                     label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
                     min = 80, max = 140, step = 5, value = c(120), width = '390px'),
@@ -100,7 +100,7 @@ server <- function(input, output) {
                     label = strong(HTML('&nbsp;'), "Spin Axis (deg)"),
                     min = -10, max = 10, step = 1, value = c(0), width = '390px'),
         #actionButton("predict2", "Submit to predict 7i trajectory"),
-        actionButton("predict4", "Predict Trajectories"),
+        actionButton("predict3", "Predict Trajectories"),
         plotlyOutput("plottrajectory_gamer"),
         width = 5
       )
@@ -359,7 +359,7 @@ server <- function(input, output) {
   
   submit_tahoe <- eventReactive(input$predict3, {
     
-    test <- as.data.frame(inverse_predict(input$clubtype, input$bs, input$la, input$backs, input$sa, input$sides))
+    test <- as.data.frame(inverse_predict(input$Monitortype, input$clubtype, input$bs, input$la, input$backs, input$sa, input$sides, input$srt, input$sax))
     test_2 <- swing_data_predict_2(test)
     test_3 <- predict_tahoe_lc(test_2, input$bs, input$la, input$backs, input$sa, input$sides)
     
@@ -410,7 +410,7 @@ server <- function(input, output) {
     
     Traj <- Traj %>% arrange(factor(Club, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW")))
     
-    print(Traj %>% filter(Club == "PW" | Club == "AW"))
+    #print(Traj %>% filter(Club == "PW" | Club == "AW"))
     
     return(Traj) 
   })
@@ -469,7 +469,7 @@ server <- function(input, output) {
                  bgcolor = "black"
     )
     
-    print(apply(unique(trajectory_test()), 2, rev))
+    #print(apply(unique(trajectory_test()), 2, rev))
     
     #Data$Model <- factor(Data$Model, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW"))
     #print(Data %>% filter(Club == "4" | Club == "6", Model == "Tahoe HL"))
