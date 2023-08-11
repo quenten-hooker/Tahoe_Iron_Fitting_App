@@ -141,7 +141,7 @@ swing_data_predict <- function(speed, attack, pitch) {
   return(new_data)
 }
 
-predict_tahoe_lc <- function(new_data, bs, la, backs, sa, sides) {
+predict_tahoe_lc <- function(new_data, MonitorType, bs, la, backs, sa, sides) {
   
   predict_data = c()
   predict_data$Model = new_data$Model
@@ -168,8 +168,20 @@ predict_tahoe_lc <- function(new_data, bs, la, backs, sa, sides) {
   predict_data$Launch.Angle <- predict(lm.Launch.Angle.normalize, re.form= NA, newdata = new_data)
   predict_data$Back.Spin <- predict(lm.Back.Spin.normalize, re.form= NA, newdata = new_data)
   predict_data$Side.Angle <- sa #predict(lm.Side.Angle.normalize, re.form= NA, newdata = new_data) #sa
+  
+  
+  if (MonitorType == "Foresight"){
+    
   predict_data$Side.Spin <- sides #predict(lm.Side.Spin.normalize, re.form= NA, newdata = new_data) #sides
   
+  }
+  
+  else {
+    
+    predict_data$Side.Spin =  as.numeric(backs)*sin(((as.numeric(sides))*pi)/180)
+    
+  }
+
   predict_data <- within(predict_data, {
     Club <- factor(Club)
     Length <- factor(Length)
@@ -182,7 +194,7 @@ predict_tahoe_lc <- function(new_data, bs, la, backs, sa, sides) {
   
 }
 
-inverse_predict <- function(MonitorType, model, bs, la, backs, sa, sides, srt, sax) {
+inverse_predict <- function(MonitorType, model, bs, la, backs, sa, sides) {
   
   
   if (model == "Apex MB 21"){
@@ -268,8 +280,8 @@ inverse_predict <- function(MonitorType, model, bs, la, backs, sa, sides, srt, s
   predict_data = data.frame(BallSpeedMph = as.numeric(bs),
                             BallLaunchAngleDeg =  as.numeric(la),
                             BallSideAngleDeg =  as.numeric(sa),
-                            BallBackSpinRpm =  as.numeric(srt)*cos(((as.numeric(sax))*pi)/180),
-                            BallSideSpinRpm =  as.numeric(srt)*sin(((as.numeric(sax))*pi)/180))}
+                            BallBackSpinRpm =  as.numeric(backs)*cos(((as.numeric(sides))*pi)/180),
+                            BallSideSpinRpm =  as.numeric(backs)*sin(((as.numeric(sides))*pi)/180))}
   
   
   print(predict_data)

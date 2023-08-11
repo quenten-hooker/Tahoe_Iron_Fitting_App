@@ -16,7 +16,6 @@ library("devtools")
 #use_python("C:/Users/Quenten.hooker/AppData/Local/Programs/Python/Python39/python.exe", required=TRUE)
 #pip install downrange --index-url https://pkgs.dev.azure.com/cgcRDClusterComputing/_packaging/callaway/pypi/simple/
 
-
 # --- this works 
 #virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
 
@@ -38,15 +37,15 @@ library("devtools")
 # reticulate::use_virtualenv(virtualenv_dir, required = T)
 # # -- above works too
 
-# PYTHON_DEPENDENCIES = c('pip', 'numpy')
+PYTHON_DEPENDENCIES = c('pip', 'numpy')
 # 
 virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-# python_path = Sys.getenv('PYTHON_PATH')
-# 
-# # Create virtual env and install dependencies
-# reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
-# reticulate::virtualenv_install(virtualenv_dir, packages =  PYTHON_DEPENDENCIES, ignore_installed=TRUE)
-# reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
+python_path = Sys.getenv('PYTHON_PATH')
+
+# Create virtual env and install dependencies
+reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
+reticulate::virtualenv_install(virtualenv_dir, packages =  PYTHON_DEPENDENCIES, ignore_installed=TRUE)
+reticulate::virtualenv_install(virtualenv_dir, packages = c("-r", "requirements.txt"))
 reticulate::use_virtualenv(virtualenv_dir, required = T)
 
 server <- function(input, output) {
@@ -93,10 +92,10 @@ server <- function(input, output) {
         sliderInput("sa",
                     label = strong(HTML('&nbsp;'), "Side Angle (deg)"),
                     min = -5, max = 5, step = .5, value = c(0), width = '390px'),
-        sliderInput("srt",
+        sliderInput("backs",
                     label = strong(HTML('&nbsp;'), "Spin Rate (rpm)"),
                     min = 4000, max = 9000, step = 500, value = c(7000), width = '390px'),
-        sliderInput("sax",
+        sliderInput("sides",
                     label = strong(HTML('&nbsp;'), "Spin Axis (deg)"),
                     min = -10, max = 10, step = 1, value = c(0), width = '390px'),
         #actionButton("predict2", "Submit to predict 7i trajectory"),
@@ -134,7 +133,7 @@ server <- function(input, output) {
   swing_data <- eventReactive(input$predict, {
     
     test <- as.data.frame(swing_data_predict(swing_input_df()$speed, swing_input_df()$attack, swing_input_df()$pitch))
-    swing_data <- predict_tahoe_lc(test, input$bs, input$la, input$backs, input$sa, input$sides)
+    swing_data <- predict_tahoe_lc(test, input$Monitortype, input$bs, input$la, input$backs, input$sa, input$sides)
     
     return(swing_data)
   })
@@ -267,8 +266,8 @@ server <- function(input, output) {
     
     downrange_data <- aero_data %>% select(carrydisp, carrydist, apexZft, landingangle)
     final_data <- cbind(swing_data, downrange_data)
-    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
-    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.1 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.2 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
     
     final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
     colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
@@ -359,9 +358,9 @@ server <- function(input, output) {
   
   submit_tahoe <- eventReactive(input$predict3, {
     
-    test <- as.data.frame(inverse_predict(input$Monitortype, input$clubtype, input$bs, input$la, input$backs, input$sa, input$sides, input$srt, input$sax))
+    test <- as.data.frame(inverse_predict(input$Monitortype, input$clubtype, input$bs, input$la, input$backs, input$sa, input$sides))
     test_2 <- swing_data_predict_2(test)
-    test_3 <- predict_tahoe_lc(test_2, input$bs, input$la, input$backs, input$sa, input$sides)
+    test_3 <- predict_tahoe_lc(test_2, input$Monitortype, input$bs, input$la, input$backs, input$sa, input$sides)
     
     return(test_3)
     
@@ -560,8 +559,8 @@ server <- function(input, output) {
     aero_data <- aerotest(swing_data)
     downrange_data <- aero_data %>% select(carrydisp, carrydist, apexZft, landingangle)
     final_data <- cbind(swing_data, downrange_data)
-    final_data.1 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
-    final_data.2 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.1 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+    final_data.2 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
     
     final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
     colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
