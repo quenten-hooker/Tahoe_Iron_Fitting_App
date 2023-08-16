@@ -1420,23 +1420,34 @@ Data.Engage <- DBI::dbGetQuery(con,
 
 Data.Engage %>% group_by(MonitorTypeName) %>% summarise(n())
 Data.Engage %>% group_by(Location) %>% summarise(n())
-
-Data.Engage %>% 
-
 Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad') %>% group_by(AccountFullName) %>% summarise(n())
+Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2") %>% filter(CategoryName == "Woods") %>% filter(str_detect(ClubFamilyName, fixed(c("driver"), ignore_case=TRUE))) %>% group_by(Location) %>% summarise(n())
+
+Data.Engage %>% group_by(Fi)
+
 
 Data_Engage_Quad_Carlsbad <- Data.Engage %>% filter(EventName == 'Callaway Performance Center - Carlsbad')
-
 Data_Engage_Quad_Carlsbad %>% group_by(FittingId) %>% summarise(num = n()) %>% arrange(desc(num))
-
 Data_Engage_Quad_Carlsbad %>% filter(CategoryName == "Irons") %>% group_by(ClubFamilyName) %>% summarise(num = n()) %>% arrange(desc(num))
 
 
-Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2") %>% filter(CategoryName == "Woods") %>% filter(str_detect(ClubFamilyName, fixed(c("driver"), ignore_case=TRUE))) %>% group_by(Location) %>% summarise(n())
+Data.Engage %>% group_by(MonitorTypeName) %>% summarise(n())
 
-Data.sum <- Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2") %>% filter(CategoryName == "Woods") %>% filter(str_detect(ClubFamilyName, fixed(c("driver"), ignore_case=TRUE))) %>% group_by(FittingId) %>% summarise(obs = n(), Mean.Head.Speed = mean(na.omit(ImpactHeadSpeedMph)))
+Data.Sum <- Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2" | MonitorTypeName == "Trackman") %>% filter(CategoryName == "Irons") %>% filter(!str_detect(ClubFamilyName, fixed(c("ut"), ignore_case=TRUE))) %>% group_by(FittingId) %>% summarise(obs = n(), BallSpeedMph.mean = mean(na.omit(BallSpeedMph)), BallLaunchAngleDeg.mean = mean(na.omit(BallLaunchAngleDeg)), BallBackSpinRpm.mean = mean(na.omit(BallBackSpinRpm)))
 
-quantile(na.omit(Data.sum$Mean.Head.Speed), probs = .90)
+
+ggplot(Data.Sum, aes(x = BallSpeedMph.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
+
+ggplot(Data.Sum, aes(x = BallLaunchAngleDeg.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
+
+
+ggplot(Data.Sum, aes(x = BallBackSpinRpm.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
+
+
++ geom_vline(xintercept=quantile(na.omit(Data.sum$Mean.Head.Speed), probs = .90), color = "blue") + annotate("text", label = "90th percentile = 106.3mph", x = 30, y = 1200, size = unit(5, "pt"))
+
+
+quantile(na.omit(Data.Sum$BallSpeedMph.mean))
 
 
 my_binwidth <- 50
