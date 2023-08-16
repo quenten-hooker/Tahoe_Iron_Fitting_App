@@ -377,8 +377,6 @@ swing_data_predict_2 <- function(unscaled_ECPC) {
                          Lateral.Face.quad = rep(Lateral.Impact.GMM, 16),
                          Vertical.Face.quad = rep(rep(Vertical.Impact.GMM, each = 8), 2))
   
-  #print(new_data %>% group_by(Model, Length) %>% summarise(mean(Club.Speed.quad), mean(Angle.Of.Attack.quad),mean(Pitch), mean(Vertical.Face.quad), ))
-  
   #print(new_data)
   return(new_data)
 }

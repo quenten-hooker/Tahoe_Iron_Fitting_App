@@ -25,7 +25,7 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                  tabPanel(title = "Launch Condition Input",
                           sidebarLayout(
                             sidebarPanel(h4(strong("7 Iron Launch Condition Inputs")),
-                                         selectInput("Monitortype", "Select the Launch Monitor", choices = c("Foresight", "Trackman")),
+                                         radioButtons("Monitortype", "Launch Monitor", choices = c("Foresight", "Trackman"), selected = c("Foresight"), inline = TRUE),
                                          uiOutput("monitor")
                                          # selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
                                          # sliderInput("bs",
@@ -53,8 +53,6 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                               dataTableOutput("carrytable_new"),
                               dataTableOutput("lctable"),
                               width = 7
-                              #plotlyOutput('plottrajectory_new'),
-                              #dataTableOutput("carrytable_new"),
                             ))),
                  tabPanel(title = "Swing Input",
                           sidebarLayout(
@@ -64,7 +62,7 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                                                      min = 50, max = 110, step = 5, value = c(90), width = '390px'),
                                          selectInput("attack", "Angle of Attack", choices = c("Steep", "Moderate", "Shallow")),
                                          selectInput("pitch", "Shaft Pitch", choices = c("Forward", "Neutral")),
-                                         actionButton("predict", "Submit to predict"),
+                                         actionButton("predict", "Predict All Trajectories"),
                                          width = 5
                             ),
                             mainPanel( 
