@@ -267,15 +267,14 @@ server <- function(input, output) {
     test <- as.data.frame(inverse_predict(input$Monitortype, input$clubtype, input$bs, input$la, input$backs, input$sa, input$sides))
     test_2 <- swing_data_predict_2(test)
     test_3 <- as.data.frame(predict_tahoe_lc(test_2, input$Monitortype, input$bs, input$la, input$backs, input$sa, input$sides))
-    # print(test_3)
-    # if (input$bs < 125){
-    #   test_3 <- test_3 %>% filter(Model == "Tahoe HL")
-    # } else{
-    #   test_3 <- test_3 %>% filter(Model == "Tahoe Std")
-    # }
-    # 
-    # print(test_3)
 
+    if (input$bs < 100){
+      test_3 <- test_3 %>% filter(Model == "Tahoe HL")
+    } else if(input$bs > 120) {
+      test_3 <- test_3 %>% filter(Model == "Tahoe Std")
+    }else{
+      test_3 <- test_3
+    }
     return(test_3)
     
   })
@@ -294,12 +293,16 @@ server <- function(input, output) {
   trajectory_test <- reactive({
     
     swing_data <- as.data.frame(submit_tahoe())
+    swing_data <- within(swing_data, {
+      Model <- factor(as.character(Model))
+    })
+    
     swing_data <- swing_data %>% group_by(Model, Club) %>% summarise(Ball.Speed = mean(Ball.Speed), 
                                                                      Launch.Angle = mean(Launch.Angle),
                                                                      Back.Spin = mean(Back.Spin), 
                                                                      Side.Angle = mean(Side.Angle),
                                                                      Side.Spin = mean(Side.Spin))
-    
+
     model_col_names <- c("Model", "Club", "Ballspeed", "LaunchAngle", "Backspin", "SideAngle", "SideSpin")
     colnames(swing_data) <- model_col_names
     #print(swing_data)
@@ -307,8 +310,8 @@ server <- function(input, output) {
     traj_X_data <- aero_data[["X yards"]]
     traj_X_data <- as.data.frame(do.call(cbind, traj_X_data))
     traj_X_data <- pivot_longer(traj_X_data, cols=everything()) %>% arrange(name)
-    traj_X_data$Model[traj_X_data$name == "V1" | traj_X_data$name == "V2" | traj_X_data$name == "V3" | traj_X_data$name == "V4" | traj_X_data$name == "V5" | traj_X_data$name == "V6" | traj_X_data$name == "V7" | traj_X_data$name == "V8"] <- "Tahoe HL"
-    traj_X_data$Model[traj_X_data$name == "V9" | traj_X_data$name == "V10" | traj_X_data$name == "V11" | traj_X_data$name == "V12" | traj_X_data$name == "V13" | traj_X_data$name == "V14" | traj_X_data$name == "V15" | traj_X_data$name == "V16"] <- "Tahoe Std"
+    traj_X_data$Model[traj_X_data$name == "V1" | traj_X_data$name == "V2" | traj_X_data$name == "V3" | traj_X_data$name == "V4" | traj_X_data$name == "V5" | traj_X_data$name == "V6" | traj_X_data$name == "V7" | traj_X_data$name == "V8"] <- levels(swing_data$Model)[1]
+    traj_X_data$Model[traj_X_data$name == "V9" | traj_X_data$name == "V10" | traj_X_data$name == "V11" | traj_X_data$name == "V12" | traj_X_data$name == "V13" | traj_X_data$name == "V14" | traj_X_data$name == "V15" | traj_X_data$name == "V16"] <- levels(swing_data$Model)[2]
     traj_X_data$Club[traj_X_data$name == "V1" | traj_X_data$name == "V9"] <- "4"
     traj_X_data$Club[traj_X_data$name == "V2" | traj_X_data$name == "V10"] <- "5"
     traj_X_data$Club[traj_X_data$name == "V3" | traj_X_data$name == "V11"] <- "6"
@@ -353,6 +356,27 @@ server <- function(input, output) {
                  bgcolor = "black"
     )
     
+    #print(unique(trajectory_test()$Model))
+    
+    if (length(unique(trajectory_test()$Model)) == 1){
+    
+    if (unique(trajectory_test()$Model) == "Tahoe HL"){
+      
+      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred"), type = 'scatter3d', mode = 'lines', split = ~Club,
+                     line = list(width = 3))
+    }
+    else if (unique(trajectory_test()$Model) == "Tahoe Std"){
+      
+      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
+                     line = list(width = 3))
+    }
+    }
+    else {
+      
+      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred", "blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
+                     line = list(width = 3))
+    }
+    
     #print(apply(unique(trajectory_test()), 2, rev))
     
     #Data$Model <- factor(Data$Model, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW"))
@@ -369,8 +393,7 @@ server <- function(input, output) {
     
     #fig <- fig %>% add_lines(y = 0, x = range(Data$X.yards), line = list(color = "black", width = 2), inherit = FALSE, showlegend = FALSE)
     
-    fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred", "blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
-                   line = list(width = 3))
+
     
     fig <- fig %>% layout(scene = scene, 
                           paper_bgcolor = "black", 
@@ -407,27 +430,72 @@ server <- function(input, output) {
     aero_data <- aerotest(swing_data)
     downrange_data <- aero_data %>% select(carrydisp, carrydist, apexZft, landingangle)
     final_data <- cbind(swing_data, downrange_data)
+
     final_data.1 <- final_data %>% filter(Model == "Tahoe Std") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
     final_data.2 <- final_data %>% filter(Model == "Tahoe HL") %>% group_by(Model, Club) %>% summarise(Carry_Distance = round(mean(carrydist),0), Peak_Height = round(mean(apexZft)), Land_Angle = round(mean(landingangle))) %>% arrange(desc(Carry_Distance)) #%>% mutate(Gapping = round(Carry_Distance - lead(Carry_Distance, default = last(Carry_Distance)),0)) 
+
+    if (nrow(final_data.2) == 0){
+      
+      final_data <- final_data.1[2:5]
+      colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)")
+      
+      sketch = htmltools::withTags(table(
+        class = 'display',
+        thead(
+          tr(
+            th(colspan = 1, ''),
+            th(class = 'dt-center', colspan = 3, 'Tahoe Std')
+          ),
+          tr(
+            lapply(colnames(final_data), th)
+          )
+        )
+      ))
+      
+    }
     
-    final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
-    colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
-    
-    sketch = htmltools::withTags(table(
-      class = 'display',
-      thead(
-        tr(
-          th(colspan = 1, ''),
-          th(class = 'dt-center', colspan = 3, 'Tahoe Std'),
-          th(class = 'dt-center', colspan = 3, 'Tahoe HL')
-        ),
-        tr(
-          lapply(colnames(final_data), th)
+    else if (nrow(final_data.1) == 0){
+      
+      final_data <- final_data.2[2:5]
+      colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)")
+      
+      print(final_data)
+      
+      sketch = htmltools::withTags(table(
+        class = 'display',
+        thead(
+          tr(
+            th(class = 'dt-center', colspan = 4, 'Tahoe HL')
+          )          )
         )
       )
-    ))
+    }
     
-    return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, columnDefs = list(list(className = 'dt-center', targets = 0:4))), rownames= FALSE))
+    else if (nrow(final_data.1) != 0 & nrow(final_data.1) != 0) {
+      
+      final_data <- cbind(final_data.1[2:5], final_data.2[3:5])
+      colnames(final_data) <- c("Club", "Carry Distance (yds)", "Peak Height (ft)", "Land Angle (deg)", "Carry Distance (yds)", "Peak Height (ft)", "Lang Angle (deg)")
+      
+      sketch = htmltools::withTags(table(
+        class = 'display',
+        thead(
+          tr(
+            th(colspan = 1, ''),
+            th(class = 'dt-center', colspan = 3, 'Tahoe Std'),
+            th(class = 'dt-center', colspan = 3, 'Tahoe HL')
+          ),
+          tr(
+            lapply(colnames(final_data), th)
+          )
+        )
+      ))
+      
+      
+    }
+    
+
+    return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, columnDefs = list(list(className = 'dt-center', targets = 1:4))), rownames= FALSE))
+    #return(datatable(final_data, rownames = NULL, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE)))
     
     #   return(datatable(final_data,     options = list(
     #   initComplete = JS("function(settings, json) {$(this.api().table().header()).css({'background-color' : 'white', 'color' : 'black', 'height' : '30px', 'font-size' : '15px', 'border-bottom' : 'none'});}"), dom = 't', ordering = F, columnDefs = list(list(className = 'dt-center', targets = 1:3))

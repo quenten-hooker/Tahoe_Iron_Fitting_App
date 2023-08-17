@@ -1436,15 +1436,12 @@ Data.Engage %>% group_by(MonitorTypeName) %>% summarise(n())
 Data.Sum <- Data.Engage %>% filter(MonitorTypeName == "FS_Quad" | MonitorTypeName == "CPAS" | MonitorTypeName == "Foresight GC2" | MonitorTypeName == "Trackman") %>% filter(CategoryName == "Irons") %>% filter(!str_detect(ClubFamilyName, fixed(c("ut"), ignore_case=TRUE))) %>% group_by(FittingId) %>% summarise(obs = n(), BallSpeedMph.mean = mean(na.omit(BallSpeedMph)), BallLaunchAngleDeg.mean = mean(na.omit(BallLaunchAngleDeg)), BallBackSpinRpm.mean = mean(na.omit(BallBackSpinRpm)))
 
 
-ggplot(Data.Sum, aes(x = BallSpeedMph.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
+ggplot(Data.Sum, aes(x = BallSpeedMph.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density.. *44000), color = "red", adjust = 2)
 
-ggplot(Data.Sum, aes(x = BallLaunchAngleDeg.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
-
-
-ggplot(Data.Sum, aes(x = BallBackSpinRpm.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..), color = "red", adjust = 2)
+ggplot(Data.Sum, aes(x = BallLaunchAngleDeg.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..*12200), color = "red", adjust = 2)
 
 
-+ geom_vline(xintercept=quantile(na.omit(Data.sum$Mean.Head.Speed), probs = .90), color = "blue") + annotate("text", label = "90th percentile = 106.3mph", x = 30, y = 1200, size = unit(5, "pt"))
+ggplot(Data.Sum, aes(x = BallBackSpinRpm.mean)) + geom_histogram(color = "black", fill = "grey", bins = 50) + geom_density(aes(y = ..density..*4100000), color = "red", adjust = 2)
 
 
 quantile(na.omit(Data.Sum$BallSpeedMph.mean))

@@ -51,7 +51,7 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                             mainPanel(
                               plotlyOutput('plottrajectory_3dtest', height = '500px'),
                               dataTableOutput("carrytable_new"),
-                              dataTableOutput("lctable"),
+                              #dataTableOutput("lctable"),
                               width = 7
                             ))),
                  tabPanel(title = "Swing Input",
