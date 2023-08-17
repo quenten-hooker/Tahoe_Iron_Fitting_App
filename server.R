@@ -73,8 +73,8 @@ server <- function(input, output) {
         sliderInput("sides",
                     label = strong(HTML('&nbsp;'), "Sidespin (rpm)"),
                     min = -2000, max = 2000, step = 250, value = c(0), width = '390px'),
-        actionButton("predict.best", "Predict Best Fit", width = '195px'),
-        actionButton("predict3", "Predict All Trajectories", width = '195px'),
+        actionButton("predict3", "Predict Best Fit", width = '195px'),
+        actionButton("predict.all", "Predict All Trajectories", width = '195px'),
         width = 5
       )
       }
@@ -97,8 +97,8 @@ server <- function(input, output) {
         sliderInput("sides",
                     label = strong(HTML('&nbsp;'), "Spin Axis (deg)"),
                     min = -10, max = 10, step = 1, value = c(0), width = '390px'),
-        actionButton("predict.best", "Predict Best Fit", width = '195px'),
-        actionButton("predict3", "Predict All Trajectories", width = '195px'),
+        actionButton("predict3", "Predict Best Fit", width = '195px'),
+        actionButton("predict.all", "Predict All Trajectories", width = '195px'),
         width = 5
       )
     }})
@@ -268,9 +268,9 @@ server <- function(input, output) {
     test_2 <- swing_data_predict_2(test)
     test_3 <- as.data.frame(predict_tahoe_lc(test_2, input$Monitortype, input$bs, input$la, input$backs, input$sa, input$sides))
 
-    if (input$bs < 100){
+    if (input$bs <= 100 | input$backs <= 5000 | input$la <= 12){
       test_3 <- test_3 %>% filter(Model == "Tahoe HL")
-    } else if(input$bs > 120) {
+    } else if(input$bs >= 120 | input$backs >= 7500 | input$la >= 23) {
       test_3 <- test_3 %>% filter(Model == "Tahoe Std")
     }else{
       test_3 <- test_3
@@ -362,9 +362,12 @@ server <- function(input, output) {
     
     if (unique(trajectory_test()$Model) == "Tahoe HL"){
       
-      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred"), type = 'scatter3d', mode = 'lines', split = ~Club,
+      fig <- plot_ly(unique(trajectory_test()) %>% filter(Club == "PW" | Club == "AW"), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred"), type = 'scatter3d', mode = 'lines', split = ~Club,
                      line = list(width = 3))
     }
+      
+      
+      
     else if (unique(trajectory_test()$Model) == "Tahoe Std"){
       
       fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
@@ -443,14 +446,15 @@ server <- function(input, output) {
         class = 'display',
         thead(
           tr(
-            th(colspan = 1, ''),
-            th(class = 'dt-center', colspan = 3, 'Tahoe Std')
+            th(class = 'dt-center', colspan = 4, 'Tahoe Std')
           ),
           tr(
             lapply(colnames(final_data), th)
           )
         )
       ))
+      return(datatable(final_data,container = sketch, style = "bootstrap", rownames= FALSE, options = list(lengthChange = FALSE, searching = FALSE, paging=FALSE)))
+      
       
     }
     
@@ -466,9 +470,14 @@ server <- function(input, output) {
         thead(
           tr(
             th(class = 'dt-center', colspan = 4, 'Tahoe HL')
-          )          )
+          ),
+          tr(
+            lapply(colnames(final_data), th)
+          )
         )
-      )
+      ))
+      return(datatable(final_data, container = sketch, style = "bootstrap", rownames= FALSE, options = list(lengthChange = FALSE, searching = FALSE, paging=FALSE)))
+      
     }
     
     else if (nrow(final_data.1) != 0 & nrow(final_data.1) != 0) {
@@ -489,12 +498,12 @@ server <- function(input, output) {
           )
         )
       ))
-      
+      return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, paging=FALSE, columnDefs = list(list(className = 'dt-center', targets = 1:4))), rownames= FALSE))
       
     }
     
 
-    return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, columnDefs = list(list(className = 'dt-center', targets = 1:4))), rownames= FALSE))
+    #return(datatable(final_data, container = sketch, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE, columnDefs = list(list(className = 'dt-center', targets = 1:4))), rownames= FALSE))
     #return(datatable(final_data, rownames = NULL, style = "bootstrap", options = list(pageLength = 15, lengthChange = FALSE, searching = FALSE)))
     
     #   return(datatable(final_data,     options = list(
