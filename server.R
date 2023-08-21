@@ -37,10 +37,9 @@ library("devtools")
 # reticulate::use_virtualenv(virtualenv_dir, required = T)
 # # -- above works too
 
-#PYTHON_DEPENDENCIES = c('pip', 'numpy')
-# 
+PYTHON_DEPENDENCIES = c('pip', 'numpy')
 virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
-#python_path = Sys.getenv('PYTHON_PATH')
+python_path = Sys.getenv('PYTHON_PATH')
 
 # Create virtual env and install dependencies
 #reticulate::virtualenv_create(envname = virtualenv_dir, python = python_path)
@@ -56,7 +55,7 @@ server <- function(input, output) {
   output$monitor <- renderUI({
     if (input$Monitortype == "Foresight") {
       div(
-        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
+        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex Pro 21", "Paradym 23", "Paradym X 23")),
         #selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
         sliderInput("bs",
                     label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
@@ -80,7 +79,7 @@ server <- function(input, output) {
       }
     else {
       div(
-        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
+        selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
         #selectInput("ball", "Ball", choices = c("Chrome Soft X", "Chrome Soft X LS", "Chrome Soft")),
         sliderInput("bs",
                     label = strong(HTML('&nbsp;'), "Ball Speed (mph)"),
@@ -335,15 +334,37 @@ server <- function(input, output) {
                        Z.yards = traj_Z_data$value,
                        Y.yards = traj_Y_data$value)
     
-    Traj <- Traj %>% arrange(factor(Club, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW")))
-    
-    #print(Traj %>% filter(Club == "PW" | Club == "AW"))
-    
+    Traj$Club <- ordered(Traj$Club, levels = c("4", "5", "6", "7", "8", "9", "PW", "AW"))
+
     return(Traj) 
   })
   
   
   #Plots/Tables
+  output$text_result <- renderText({
+    
+    if (length(unique(trajectory_test()$Model)) == 1){
+      
+      if (unique(trajectory_test()$Model) == "Tahoe HL"){
+        "Based on your launch conditions, Tahoe HL is the best iron set for you"
+      }    
+      
+      
+      else if (unique(trajectory_test()$Model) == "Tahoe Std"){
+        
+        "Based on your launch conditions, Tahoe Std is the best iron set for you"
+
+      }
+    }
+    else {
+      
+        "Based on your launch conditions, Tahoe Std and Tahoe HL could both be best for you"
+      
+    }
+    
+  })
+  
+  
   output$plottrajectory_3dtest <- renderPlotly({
     
     
@@ -356,28 +377,54 @@ server <- function(input, output) {
                  bgcolor = "black"
     )
     
-    #print(unique(trajectory_test()$Model))
-    
+    #print(levels(trajectory_test()$Club))
+
     if (length(unique(trajectory_test()$Model)) == 1){
     
     if (unique(trajectory_test()$Model) == "Tahoe HL"){
       
-      fig <- plot_ly(unique(trajectory_test()) %>% filter(Club == "PW" | Club == "AW"), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred"), type = 'scatter3d', mode = 'lines', split = ~Club,
-                     line = list(width = 3))
+      fig <- plot_ly()
+      
+      for (i in levels(trajectory_test()$Club)){
+        
+      plot_data <- unique(trajectory_test())%>% filter(Club == i)
+
+      fig <- fig %>% add_trace(x = plot_data$X.yards, y = plot_data$Y.yards, z = plot_data$Z.yards, color = plot_data$Model, colors = c("darkred"), type = 'scatter3d', mode = 'lines', split = plot_data$Club,
+                     line = list(width = 3)) 
+      }
     }
       
       
       
     else if (unique(trajectory_test()$Model) == "Tahoe Std"){
       
-      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
-                     line = list(width = 3))
+      fig <- plot_ly()
+      
+      for (i in levels(trajectory_test()$Club)){
+        
+        plot_data <- unique(trajectory_test())%>% filter(Club == i)
+        
+        fig <- fig %>% add_trace(x = plot_data$X.yards, y = plot_data$Y.yards, z = plot_data$Z.yards, color = plot_data$Model, colors = c("blue"), type = 'scatter3d', mode = 'lines', split = plot_data$Club,
+                                 line = list(width = 3)) 
+      }
     }
     }
     else {
       
-      fig <- plot_ly(unique(trajectory_test()), x = ~X.yards, y = ~Y.yards, z = ~Z.yards, color = ~Model, colors = c("darkred", "blue"), type = 'scatter3d', mode = 'lines', split = ~Club,
-                     line = list(width = 3))
+      fig <- plot_ly()
+      
+      for (i in levels(trajectory_test()$Model)){
+        
+        plot_data.1 <- unique(trajectory_test())%>% filter(Model == i)
+      
+      for (j in levels(trajectory_test()$Club)){
+        
+        plot_data <- unique(plot_data.1)%>% filter(Club == j)
+        
+        fig <- fig %>% add_trace(x = plot_data$X.yards, y = plot_data$Y.yards, z = plot_data$Z.yards, color = plot_data$Model, colors = c("darkred", "blue"), type = 'scatter3d', mode = 'lines', split = plot_data$Club,
+                                 line = list(width = 3)) 
+      }
+      }
     }
     
     #print(apply(unique(trajectory_test()), 2, rev))
@@ -406,8 +453,8 @@ server <- function(input, output) {
                               font = list(color = "white")),
                             borderwidth = 5,
                             font = list(
-                              color = "white"),
-                            traceorder = "grouped"
+                              color = "white")
+                            #traceorder = "grouped"
                             #orientation = 'h'
                           )
     )

@@ -11,6 +11,7 @@ library('shinyWidgets')
 library('shinythemes')
 library('plotly')
 library('neuralnet')
+library('shinycssloaders')
 
 #BELOW IS A TEMPLATE FOR THE SHINY APP
 # This is a Shiny web application. You can run the application by clicking
@@ -25,7 +26,7 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                  tabPanel(title = "Launch Condition Input",
                           sidebarLayout(
                             sidebarPanel(h4(strong("7 Iron Launch Condition Inputs")),
-                                         radioButtons("Monitortype", "Launch Monitor", choices = c("Foresight", "Trackman"), selected = c("Foresight"), inline = TRUE),
+                                         radioButtons("Monitortype", "Launch Monitor", choices = c("Foresight", "Trackman"), selected = c(""), inline = TRUE),
                                          uiOutput("monitor")
                                          # selectInput("clubtype", "Club", choices = c("Apex MB 21", "Apex TCB 21", "Apex 21", "Apex Pro 21", "Apex DCB 21", "Paradym 23", "Paradym X 23")),
                                          # sliderInput("bs",
@@ -49,10 +50,15 @@ ui <- navbarPage(theme = shinytheme("darkly"),
                                          # width = 5
                             ),
                             mainPanel(
-                              plotlyOutput('plottrajectory_3dtest', height = '500px'),
+                              h4(strong(textOutput("text_result"))),
+                              plotlyOutput('plottrajectory_3dtest', height = '450px') %>% withSpinner(color='blue'),
                               dataTableOutput("carrytable_new"),
                               #dataTableOutput("lctable"),
-                              width = 7
+                              width = 7,
+                              tags$style(type="text/css",
+                                         ".shiny-output-error { visibility: hidden; }",
+                                         ".shiny-output-error:before { visibility: hidden; }"
+                              )
                             ))),
                  tabPanel(title = "Swing Input",
                           sidebarLayout(

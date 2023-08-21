@@ -1,0 +1,53 @@
+@font-face {
+  font-family: Origin;
+  src: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/origin-extrabold-webfont.woff);
+}
+
+.myloader {
+  align-items: center;
+  background-color: #222;
+  height: 400px;
+}
+
+.myloader > h1 {
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  display: flex;
+  justify-content: center;
+  font-family: Origin, Helvetica Light, sans-serif;
+  color: blue;
+  background-image: linear-gradient(
+    blue 28%,
+    rgb(77, 77, 77) 40%,
+    blue 54%
+  );
+  -webkit-background-clip: text;
+  letter-spacing: 0.5rem;
+}
+
+.myloader > h1 > span::before {
+  content: "";
+  animation-name: animate;
+  animation-duration: 10s;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+  padding-left: 10px;
+}
+
+@keyframes animate {
+  10% {
+    content: "Predicting your Tahoe Iron Set...";
+  }
+  30% {
+    content: "Predicting your Tahoe Iron Set.";
+  }
+  60% {
+    content: "Predicting your Tahoe Iron Set..";
+  }
+  90% {
+    content: "Predicting your Tahoe Iron Set...";
+  100% {
+    content: "Results!";
+  }
+}
